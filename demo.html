@@ -1,0 +1,1813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Splatify — Paper2Code &amp; Knowledge Discovery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0e1a;--bg2:#0f1424;--bg3:#161c30;--panel:#10162a;--panel2:#141b33;
+  --border:#1f2942;--border2:#2a3656;
+  --text:#e6ecff;--dim:#8a96b8;--muted:#5a6688;
+  --cyan:#22d3ee;--purple:#a855f7;--pink:#ec4899;--green:#10b981;
+  --amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;--indigo:#6366f1;--gold:#fbbf24;
+  --font-ui:'Inter',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono','SF Mono',Consolas,monospace;
+  --glow-cyan:0 0 24px rgba(34,211,238,.45);
+  --glow-purple:0 0 24px rgba(168,85,247,.45);
+  --glow-pink:0 0 24px rgba(236,72,153,.45);
+  --glow-gold:0 0 24px rgba(251,191,36,.45);
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-ui);
+  overflow:hidden;-webkit-font-smoothing:antialiased}
+
+/* ═══ AMBIENT ═══ */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 70% 50% at 12% 20%,rgba(168,85,247,.18),transparent 60%),
+    radial-gradient(ellipse 60% 50% at 88% 80%,rgba(34,211,238,.16),transparent 60%),
+    radial-gradient(ellipse 50% 40% at 50% 50%,rgba(236,72,153,.06),transparent 70%);
+  animation:bgPulse 12s ease-in-out infinite alternate}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.35;
+  background-image:
+    linear-gradient(rgba(31,41,66,.55) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(31,41,66,.55) 1px,transparent 1px);
+  background-size:40px 40px;mask-image:radial-gradient(ellipse 80% 60% at 50% 50%,black 30%,transparent 90%)}
+@keyframes bgPulse{0%{filter:hue-rotate(0)}100%{filter:hue-rotate(20deg)}}
+
+.particles{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.particle{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--cyan);
+  box-shadow:0 0 10px currentColor;opacity:0;animation:floatUp 14s linear infinite}
+.particle:nth-child(2n){background:var(--purple);animation-duration:18s}
+.particle:nth-child(3n){background:var(--pink);animation-duration:22s}
+@keyframes floatUp{
+  0%{opacity:0;transform:translateY(110vh) translateX(0) scale(0)}
+  10%{opacity:.55;transform:translateY(90vh) translateX(20px) scale(1)}
+  90%{opacity:.55;transform:translateY(10vh) translateX(-30px) scale(1)}
+  100%{opacity:0;transform:translateY(-10vh) translateX(0) scale(0)}
+}
+
+/* ═══ INTRO ═══ */
+#intro{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at center,#161c30 0%,#0a0e1a 70%);z-index:200;transition:opacity .8s ease}
+#intro.hide{opacity:0;pointer-events:none}
+#intro .glow{position:absolute;width:520px;height:520px;border-radius:50%;filter:blur(120px);opacity:.5;
+  background:conic-gradient(from 0deg,var(--purple),var(--pink),var(--cyan),var(--purple));
+  animation:rotateGlow 8s linear infinite}
+#intro .tag{font-family:var(--font-mono);font-size:.78rem;color:var(--pink);letter-spacing:3px;text-transform:uppercase;
+  margin-bottom:1.2rem;opacity:0;animation:fadeUp .7s .05s ease forwards;position:relative;z-index:1}
+#intro h1{font-size:clamp(3.5rem,9vw,7.5rem);font-weight:900;letter-spacing:-4px;position:relative;z-index:1;
+  background:linear-gradient(135deg,var(--purple) 0%,var(--pink) 50%,var(--cyan) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  opacity:0;transform:translateY(20px) scale(.95);animation:introTitle 1s .15s cubic-bezier(.22,1,.36,1) forwards;
+  filter:drop-shadow(0 0 40px rgba(168,85,247,.4))}
+#intro p{font-size:1.1rem;color:var(--dim);letter-spacing:.4px;position:relative;z-index:1;margin-top:.5rem;
+  opacity:0;animation:fadeUp .8s .65s ease forwards;text-align:center;max-width:600px;line-height:1.6}
+#intro .sub{font-size:.72rem;color:var(--muted);margin-top:.5rem;font-family:var(--font-mono);letter-spacing:2px;
+  opacity:0;animation:fadeUp .8s .95s ease forwards;position:relative;z-index:1;text-align:center}
+.intro-bar{display:flex;gap:5px;margin-top:2.4rem;opacity:0;animation:fadeUp .5s 1.15s ease forwards;position:relative;z-index:1}
+.intro-bar span{width:30px;height:3px;border-radius:2px;background:var(--purple);opacity:.25;
+  animation:barPulse 1.4s ease infinite}
+.intro-bar span:nth-child(2){animation-delay:.12s;background:var(--pink)}
+.intro-bar span:nth-child(3){animation-delay:.24s;background:var(--cyan)}
+.intro-bar span:nth-child(4){animation-delay:.36s;background:var(--indigo)}
+.intro-bar span:nth-child(5){animation-delay:.48s;background:var(--gold)}
+@keyframes rotateGlow{to{transform:rotate(360deg)}}
+@keyframes introTitle{to{opacity:1;transform:none}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes barPulse{0%,100%{opacity:.25;transform:scaleY(1)}50%{opacity:1;transform:scaleY(1.6)}}
+
+/* ═══ APP ═══ */
+#app{display:none;flex-direction:column;height:100vh;opacity:0;transition:opacity 1s ease;position:relative;z-index:1}
+#app.show{display:flex;opacity:1}
+
+header{display:flex;align-items:center;padding:0 1.4rem;height:56px;flex-shrink:0;
+  border-bottom:1px solid var(--border);background:rgba(15,20,36,.7);backdrop-filter:blur(16px);position:relative;z-index:10}
+.logo{display:flex;align-items:center;gap:.6rem;font-size:1.05rem;font-weight:800;letter-spacing:-.5px}
+.logo-mark{width:28px;height:28px;border-radius:8px;background:conic-gradient(from 180deg,var(--purple),var(--pink),var(--cyan),var(--purple));
+  box-shadow:0 0 16px rgba(168,85,247,.55);position:relative;display:flex;align-items:center;justify-content:center;
+  animation:logoSpin 6s linear infinite}
+.logo-mark::after{content:'';position:absolute;inset:5px;border-radius:5px;background:var(--bg2)}
+.logo-mark::before{content:'S';position:absolute;z-index:1;font-size:.85rem;font-weight:900;
+  background:linear-gradient(135deg,var(--pink),var(--cyan));-webkit-background-clip:text;color:transparent}
+.logo-text{background:linear-gradient(135deg,var(--purple),var(--pink));-webkit-background-clip:text;color:transparent}
+@keyframes logoSpin{to{transform:rotate(360deg)}}
+
+.h-divider{width:1px;height:22px;background:var(--border2);margin:0 1.1rem}
+.crumbs{display:flex;align-items:center;gap:.5rem;font-size:.78rem;color:var(--dim);font-family:var(--font-mono)}
+.crumbs .arrow{color:var(--muted)}
+.crumbs .current{color:var(--pink);font-weight:600;text-shadow:0 0 12px rgba(236,72,153,.4)}
+.spacer{flex:1}
+.h-stats{display:flex;gap:1.2rem;font-family:var(--font-mono);font-size:.7rem;color:var(--muted)}
+.h-stats .stat{display:flex;align-items:center;gap:.4rem}
+.h-stats .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px currentColor;animation:dotPulse 1.6s ease-in-out infinite}
+.h-stats .v{color:var(--text);font-weight:600}
+.timer{font-family:var(--font-mono);font-size:.85rem;color:var(--cyan);min-width:64px;text-align:right;font-weight:700;
+  text-shadow:0 0 12px rgba(34,211,238,.4)}
+@keyframes dotPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.3);opacity:.6}}
+
+/* ═══ PIPELINE BAR ═══ */
+.pipeline{display:flex;align-items:center;gap:.45rem;padding:.7rem 1.3rem;flex-shrink:0;overflow-x:auto;
+  background:linear-gradient(180deg,rgba(20,27,51,.7),rgba(15,20,36,.4));border-bottom:1px solid var(--border)}
+.pstep{display:flex;align-items:center;gap:.4rem;padding:.38rem .72rem;border-radius:8px;
+  font-size:.7rem;font-family:var(--font-mono);font-weight:600;color:var(--muted);
+  background:rgba(20,27,51,.5);border:1px solid var(--border);transition:all .45s cubic-bezier(.22,1,.36,1);
+  position:relative;white-space:nowrap;flex-shrink:0}
+.pstep .pi{width:16px;height:16px;border-radius:5px;background:var(--bg3);display:flex;align-items:center;justify-content:center;
+  font-size:.62rem;color:var(--muted);transition:all .4s}
+.pstep.active{color:var(--pink);border-color:rgba(236,72,153,.5);background:rgba(236,72,153,.08);
+  box-shadow:0 0 0 1px rgba(236,72,153,.25),var(--glow-pink);transform:translateY(-1px)}
+.pstep.active .pi{background:var(--pink);color:#001;box-shadow:0 0 14px rgba(236,72,153,.7);animation:piSpin 1.5s ease-in-out infinite}
+.pstep.done{color:var(--green);border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.06)}
+.pstep.done .pi{background:var(--green);color:#001}
+.pstep.done .pi::after{content:'✓';font-weight:900}
+.pstep.act2{color:var(--dim)}
+.pstep.act2.active{color:var(--cyan);border-color:rgba(34,211,238,.5);background:rgba(34,211,238,.08);
+  box-shadow:0 0 0 1px rgba(34,211,238,.25),var(--glow-cyan)}
+.pstep.act2.active .pi{background:var(--cyan);color:#001;box-shadow:0 0 14px rgba(34,211,238,.7)}
+.pstep.act2.done{color:var(--green);border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.06)}
+.pstep.champ.done .pi{background:var(--gold);color:#001;box-shadow:var(--glow-gold)}
+.pstep.champ.done{color:var(--gold);border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.08)}
+.parrow{color:var(--muted);font-size:.85rem;opacity:.5;flex-shrink:0}
+.parrow.active{color:var(--pink);opacity:1;animation:arrowSlide 1s ease-in-out infinite}
+.pact-divider{font-family:var(--font-mono);font-size:.58rem;color:var(--muted);letter-spacing:2px;padding:0 .5rem;
+  display:flex;align-items:center;gap:.35rem;flex-shrink:0}
+.pact-divider span{height:1px;width:14px;background:var(--border2)}
+@keyframes piSpin{0%,100%{transform:rotate(0)}50%{transform:rotate(180deg)}}
+@keyframes arrowSlide{0%,100%{transform:translateX(0)}50%{transform:translateX(3px)}}
+
+.gen-progress{height:2px;background:var(--border);position:relative;overflow:hidden;flex-shrink:0}
+.gen-progress::before{content:'';position:absolute;left:0;top:0;height:100%;width:var(--p,0%);
+  background:linear-gradient(90deg,var(--purple),var(--pink),var(--cyan),var(--gold));
+  box-shadow:0 0 10px rgba(236,72,153,.6);transition:width .5s ease}
+
+/* ═══ MAIN — 3-PANE LAYOUT ═══ */
+main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.85fr) minmax(0,1.25fr);
+  gap:1px;background:var(--border);overflow:hidden;position:relative;transition:opacity .7s ease}
+main.dim{opacity:.15;pointer-events:none;filter:blur(2px)}
+.pane{background:var(--panel);display:flex;flex-direction:column;min-height:0;position:relative;overflow:hidden}
+.pane-head{display:flex;align-items:center;gap:.55rem;padding:.7rem 1rem;flex-shrink:0;
+  border-bottom:1px solid var(--border);background:linear-gradient(180deg,var(--panel2),transparent);position:relative;z-index:2}
+.pane-icon{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+  font-size:.85rem;font-weight:900;color:#fff}
+.pane-icon.ic-paper{background:linear-gradient(135deg,#a855f7,#ec4899);box-shadow:var(--glow-purple)}
+.pane-icon.ic-agent{background:linear-gradient(135deg,#22d3ee,#6366f1);box-shadow:var(--glow-cyan)}
+.pane-icon.ic-code{background:linear-gradient(135deg,#10b981,#22d3ee);box-shadow:0 0 24px rgba(16,185,129,.4)}
+.pane-title{font-size:.82rem;font-weight:700;letter-spacing:-.2px}
+.pane-sub{font-size:.66rem;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:1.2px;margin-left:auto}
+.live-pill{display:inline-flex;align-items:center;gap:.3rem;padding:.18rem .5rem;border-radius:99px;
+  background:rgba(236,72,153,.15);border:1px solid rgba(236,72,153,.35);font-size:.6rem;color:#f9a8d4;
+  font-family:var(--font-mono);font-weight:700;letter-spacing:1px}
+.live-pill .ld{width:5px;height:5px;border-radius:50%;background:var(--pink);animation:dotPulse 1s ease-in-out infinite;box-shadow:0 0 6px currentColor}
+
+/* ═══ PAPER PANE ═══ */
+.paper-wrap{flex:1;position:relative;overflow:hidden;background:#f4f2ef;
+  background-image:radial-gradient(circle at 50% 0,rgba(168,85,247,.04),transparent 50%)}
+.paper{position:absolute;inset:16px 20px;background:#fff;border-radius:6px;
+  box-shadow:0 12px 32px rgba(0,0,0,.4),0 2px 6px rgba(0,0,0,.25);
+  overflow:hidden;color:#1a1f2e;font-family:'Charter','Georgia','Times New Roman',serif;
+  font-size:9.4px;line-height:1.62;padding:16px 22px 30px}
+.paper-scroll{will-change:transform;transition:transform 1.3s cubic-bezier(.65,.05,.36,1)}
+.paper h2{font-size:13.5px;font-weight:700;text-align:center;margin-bottom:4px;color:#0f172a;letter-spacing:-.3px}
+.paper .authors{text-align:center;font-size:8px;color:#475569;font-style:italic;margin-bottom:4px}
+.paper .venue{text-align:center;font-size:7px;color:#94a3b8;font-family:var(--font-mono);letter-spacing:.6px;margin-bottom:12px}
+.paper .sec{font-weight:700;font-size:10.5px;color:#0f172a;margin:10px 0 4px;letter-spacing:-.2px}
+.paper .sec .num{color:#a855f7;margin-right:6px;font-family:var(--font-mono);font-weight:700}
+.paper p{margin-bottom:6px;text-align:justify;text-indent:13px;color:#334155}
+.paper .abstract{font-style:italic;font-size:8.8px;background:#faf5ff;padding:7px 11px;border-left:3px solid #a855f7;margin-bottom:9px;border-radius:0 4px 4px 0;color:#3b4564}
+.paper .equation{text-align:center;margin:7px 0;font-family:'Cambria Math','STIX',serif;font-size:11px;font-style:italic;
+  padding:5px;background:linear-gradient(90deg,transparent,rgba(168,85,247,.07),transparent);border-radius:4px;position:relative;color:#1e293b}
+.paper .equation .lbl{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-style:normal;color:#64748b;font-size:8.5px;font-family:var(--font-mono)}
+.paper .figure{margin:10px auto;width:80%;height:56px;background:linear-gradient(135deg,#e0e7ff,#fce7f3,#cffafe);border-radius:4px;
+  display:flex;align-items:center;justify-content:center;font-size:8px;color:#64748b;border:1px solid #e2e8f0;position:relative;overflow:hidden}
+.paper .figure::before{content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(45deg,transparent 0 7px,rgba(255,255,255,.4) 7px 9px)}
+.paper .ref{font-size:7.5px;color:#475569;margin:1.5px 0;text-indent:-14px;padding-left:14px}
+.paper code{font-family:var(--font-mono);font-size:8.4px;background:#f1f5f9;padding:1px 4px;border-radius:3px;color:#0f172a}
+.paper ul{list-style:none;padding:0;margin:4px 0 8px}
+.paper ul li{padding-left:14px;position:relative;color:#334155;margin-bottom:2px}
+.paper ul li::before{content:'•';position:absolute;left:4px;color:#a855f7;font-weight:700}
+.paper b{color:#0f172a}
+.paper .key{background:linear-gradient(120deg,rgba(236,72,153,.15),rgba(168,85,247,.15));padding:0 3px;border-radius:2px;font-weight:600;color:#6b21a8}
+
+.scan-line{position:absolute;left:20px;right:20px;height:44px;pointer-events:none;z-index:5;
+  background:linear-gradient(180deg,transparent 0%,rgba(34,211,238,.18) 30%,rgba(168,85,247,.22) 60%,transparent 100%);
+  border-top:1px solid rgba(34,211,238,.5);border-bottom:1px solid rgba(168,85,247,.5);
+  box-shadow:0 0 30px rgba(34,211,238,.35);transition:top 1.2s cubic-bezier(.65,.05,.36,1);top:60px;
+  opacity:0}
+.scan-line.on{opacity:.85}
+.scan-line::before{content:'';position:absolute;left:0;top:50%;width:100%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan) 20%,var(--purple) 50%,var(--pink) 80%,transparent);
+  box-shadow:0 0 12px var(--cyan);animation:scanShimmer 2s linear infinite}
+@keyframes scanShimmer{0%{opacity:.6}50%{opacity:1}100%{opacity:.6}}
+
+.page-no{position:absolute;bottom:8px;right:14px;font-size:.62rem;color:#fff;
+  font-family:var(--font-mono);z-index:9;background:rgba(15,20,36,.85);
+  padding:.18rem .55rem;border-radius:5px;backdrop-filter:blur(8px);
+  border:1px solid var(--border2);font-weight:600;letter-spacing:.4px;
+  box-shadow:0 4px 12px rgba(0,0,0,.4)}
+
+/* ═══ AGENT PANE ═══ */
+.agent-wrap{flex:1;display:flex;flex-direction:column;min-height:0;
+  background:radial-gradient(ellipse at top,rgba(34,211,238,.06),transparent 60%)}
+.agent-brain{padding:.9rem 1rem .6rem;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:.5rem;
+  border-bottom:1px solid var(--border);position:relative}
+.brain-orb{width:72px;height:72px;border-radius:50%;position:relative;
+  background:radial-gradient(circle at 35% 30%,#fff,#22d3ee 30%,#a855f7 65%,#ec4899);
+  box-shadow:0 0 40px rgba(168,85,247,.6),inset 0 0 20px rgba(255,255,255,.3);
+  animation:orbFloat 4s ease-in-out infinite}
+.brain-orb::before,.brain-orb::after{content:'';position:absolute;inset:-8px;border-radius:50%;
+  border:1px solid rgba(34,211,238,.4);animation:orbRing 3s ease-in-out infinite}
+.brain-orb::after{inset:-16px;border-color:rgba(168,85,247,.3);animation-delay:.5s}
+.brain-orb.thinking{animation:orbThink 1s ease-in-out infinite}
+@keyframes orbFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes orbRing{0%,100%{transform:scale(1);opacity:.55}50%{transform:scale(1.15);opacity:.18}}
+@keyframes orbThink{0%,100%{box-shadow:0 0 40px rgba(168,85,247,.6),inset 0 0 20px rgba(255,255,255,.3)}50%{box-shadow:0 0 60px rgba(34,211,238,.9),inset 0 0 30px rgba(255,255,255,.5)}}
+
+.brain-status{font-family:var(--font-mono);font-size:.72rem;color:var(--cyan);font-weight:600;letter-spacing:.5px;
+  text-shadow:0 0 12px rgba(34,211,238,.5);min-height:1.1em;text-align:center}
+.brain-sub{font-size:.66rem;color:var(--muted);font-family:var(--font-mono);letter-spacing:.5px}
+.thinking-dots{display:inline-flex;gap:3px;margin-left:6px}
+.thinking-dots span{width:4px;height:4px;border-radius:50%;background:var(--cyan);
+  animation:dotBounce 1.2s ease-in-out infinite;box-shadow:0 0 6px currentColor}
+.thinking-dots span:nth-child(2){animation-delay:.15s}
+.thinking-dots span:nth-child(3){animation-delay:.3s}
+@keyframes dotBounce{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-4px);opacity:1}}
+
+.tokens-section{padding:.65rem 1rem;flex-shrink:0;border-bottom:1px solid var(--border)}
+.tokens-label{font-size:.6rem;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;
+  letter-spacing:1.5px;margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem}
+.tokens-label::before{content:'';width:3px;height:10px;background:linear-gradient(180deg,var(--purple),var(--pink));border-radius:2px}
+.tokens{display:flex;flex-wrap:wrap;gap:.3rem;min-height:32px}
+.tok{font-family:var(--font-mono);font-size:.64rem;padding:.22rem .5rem;border-radius:6px;
+  background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.3);color:var(--cyan);font-weight:600;
+  opacity:0;transform:translateY(8px) scale(.8);animation:tokIn .5s cubic-bezier(.22,1,.36,1) forwards;
+  display:flex;align-items:center;gap:.3rem}
+.tok.t-eq{background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.35);color:#c084fc}
+.tok.t-arch{background:rgba(236,72,153,.1);border-color:rgba(236,72,153,.35);color:#f472b6}
+.tok.t-param{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.35);color:#fbbf24}
+.tok.t-loss{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.35);color:#34d399}
+.tok.t-cite{background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.35);color:#a5b4fc}
+.tok-icon{font-size:.68rem}
+@keyframes tokIn{to{opacity:1;transform:none}}
+
+.thoughts{flex:1;overflow:hidden;padding:.65rem 1rem;display:flex;flex-direction:column;gap:.42rem;min-height:0;
+  font-family:var(--font-mono);font-size:.68rem;mask-image:linear-gradient(180deg,transparent 0,black 14%,black 100%)}
+.thought{display:flex;align-items:flex-start;gap:.5rem;padding:.48rem .6rem;border-radius:8px;
+  background:rgba(20,27,51,.55);border:1px solid var(--border);color:var(--dim);
+  opacity:0;transform:translateX(-12px);animation:thoughtIn .5s cubic-bezier(.22,1,.36,1) forwards;
+  flex-shrink:0;line-height:1.5}
+.thought .ti{flex-shrink:0;width:16px;height:16px;border-radius:5px;background:var(--bg3);
+  display:flex;align-items:center;justify-content:center;font-size:.58rem;color:var(--cyan);font-weight:900;margin-top:1px}
+.thought.read .ti{background:rgba(168,85,247,.2);color:#c084fc}
+.thought.think .ti{background:rgba(34,211,238,.2);color:var(--cyan)}
+.thought.plan .ti{background:rgba(245,158,11,.2);color:#fbbf24}
+.thought.cite .ti{background:rgba(99,102,241,.2);color:#a5b4fc}
+.thought.write .ti{background:rgba(16,185,129,.2);color:#34d399}
+.thought.fix .ti{background:rgba(236,72,153,.2);color:#f472b6}
+.thought b{color:var(--text);font-weight:600}
+.thought code{font-family:var(--font-mono);background:rgba(34,211,238,.1);color:#7dd3fc;padding:1px 4px;border-radius:3px;font-size:.65rem}
+@keyframes thoughtIn{to{opacity:1;transform:none}}
+
+/* ═══ CODE PANE ═══ */
+.code-wrap{flex:1;display:flex;flex-direction:column;min-height:0;background:#0a0e1a;overflow:hidden;position:relative}
+.code-tabs{display:flex;gap:1px;padding:0 1rem;flex-shrink:0;overflow-x:auto;
+  background:linear-gradient(180deg,#0d1322,#0a0e1a);border-bottom:1px solid var(--border)}
+.tab{padding:.55rem .8rem;font-size:.68rem;font-family:var(--font-mono);color:var(--muted);
+  border-bottom:2px solid transparent;cursor:default;display:flex;align-items:center;gap:.35rem;transition:all .3s;white-space:nowrap}
+.tab .file-i{font-size:.75rem}
+.tab.active{color:var(--cyan);border-color:var(--cyan);background:rgba(34,211,238,.05);text-shadow:0 0 8px rgba(34,211,238,.4)}
+.tab.done .file-i{color:var(--green)}
+.tab.refixed{color:var(--pink);border-color:var(--pink);background:rgba(236,72,153,.05)}
+
+.code-body{flex:1;overflow:auto;display:flex;font-family:var(--font-mono);font-size:.72rem;line-height:1.65;position:relative;min-height:0}
+.gutter{flex-shrink:0;padding:.6rem .55rem .6rem .85rem;color:#3a4564;text-align:right;user-select:none;
+  border-right:1px solid var(--border);background:#080c17;font-size:.65rem;min-width:38px}
+.gutter span{display:block}
+.code-content{flex:1;padding:.6rem 1rem;color:#cbd5e1;white-space:pre;min-width:0}
+.code-line{display:block;min-height:1.65em;opacity:0;animation:codeLineIn .25s ease forwards}
+@keyframes codeLineIn{to{opacity:1}}
+.k{color:#c084fc;font-weight:600}.s{color:#34d399}.n{color:#fbbf24}.c{color:#64748b;font-style:italic}
+.fn{color:#22d3ee}.cls{color:#fde047}.dec{color:#f472b6}.op{color:#94a3b8}.self{color:#fb7185;font-style:italic}
+.cursor{display:inline-block;width:7px;height:1em;background:var(--cyan);vertical-align:text-bottom;
+  animation:caret 1s steps(1) infinite;box-shadow:0 0 8px currentColor;margin-left:1px}
+@keyframes caret{50%{opacity:0}}
+
+.code-status{flex-shrink:0;padding:.5rem 1rem;border-top:1px solid var(--border);
+  background:linear-gradient(180deg,transparent,rgba(20,27,51,.4));
+  display:flex;align-items:center;gap:.7rem;font-size:.64rem;font-family:var(--font-mono);color:var(--muted)}
+.code-status .lhs{display:flex;gap:.7rem;align-items:center}
+.code-status .gen-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px currentColor;animation:dotPulse 1.4s ease-in-out infinite}
+.code-status .rhs{margin-left:auto;display:flex;gap:.7rem;align-items:center}
+.code-status .v{color:var(--text);font-weight:600}
+.lang-badge{padding:.15rem .45rem;border-radius:4px;background:rgba(34,211,238,.12);color:var(--cyan);
+  border:1px solid rgba(34,211,238,.3);font-weight:700;letter-spacing:.5px}
+
+/* ═══ RENDER OVERLAY (inside code pane) ═══ */
+.render-overlay{position:absolute;inset:0;background:linear-gradient(180deg,#0a0e1a 0%,#0d1322 100%);
+  display:flex;flex-direction:column;padding:.85rem .95rem;gap:.65rem;z-index:8;
+  opacity:0;transform:translateY(20px);pointer-events:none;transition:all .7s cubic-bezier(.22,1,.36,1)}
+.render-overlay.show{opacity:1;transform:none;pointer-events:auto}
+.ro-head{display:flex;align-items:baseline;justify-content:space-between;flex-shrink:0;padding-bottom:.4rem;border-bottom:1px solid var(--border)}
+.ro-title{display:flex;align-items:baseline;gap:.55rem}
+.ro-dataset{font-size:.92rem;font-weight:800;background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;color:transparent;letter-spacing:-.3px}
+.ro-sub{font-size:.68rem;color:var(--dim);font-family:var(--font-mono)}
+.ro-meta{font-size:.68rem;color:var(--muted);font-family:var(--font-mono)}
+.ro-meta .v{color:var(--amber);font-weight:700}
+.ro-meta .v.g{color:#34d399;text-shadow:0 0 10px rgba(52,211,153,.4)}
+.ro-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;flex-shrink:0;transition:all .6s cubic-bezier(.22,1,.36,1)}
+.thumb{position:relative;aspect-ratio:16/10;border-radius:8px;overflow:hidden;background:#000;
+  border:1px solid var(--border2);box-shadow:0 4px 14px rgba(0,0,0,.4);
+  opacity:0;transform:scale(.85);animation:thumbIn .6s cubic-bezier(.22,1,.36,1) forwards}
+.thumb:nth-child(1){animation-delay:.05s}
+.thumb:nth-child(2){animation-delay:.18s}
+.thumb:nth-child(3){animation-delay:.31s}
+.thumb:nth-child(4){animation-delay:.44s}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block;
+  filter:blur(1.2px) saturate(.7) brightness(.82) contrast(.92);
+  transition:filter 1s ease}
+.ro-grid.fixed .thumb img{filter:none}
+@keyframes thumbIn{to{opacity:1;transform:none}}
+.thumb .thumb-fx{position:absolute;inset:0;pointer-events:none;
+  background-image:
+    radial-gradient(circle at 22% 32%,rgba(255,180,140,.36) 0,transparent 16%),
+    radial-gradient(circle at 72% 28%,rgba(180,200,255,.28) 0,transparent 14%),
+    radial-gradient(circle at 60% 70%,rgba(168,85,247,.26) 0,transparent 18%),
+    radial-gradient(circle at 35% 75%,rgba(236,72,153,.22) 0,transparent 14%),
+    repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.18) 3px 4px),
+    repeating-linear-gradient(45deg,rgba(255,255,255,.04) 0 2px,transparent 2px 6px);
+  mix-blend-mode:screen;transition:opacity 1s ease;animation:noiseFlicker 1.4s ease-in-out infinite}
+.ro-grid.fixed .thumb .thumb-fx{opacity:0}
+.ro-grid.fixed .thumb .psnr{color:#34d399;text-shadow:0 0 8px rgba(52,211,153,.4)}
+.thumb .lbl{position:absolute;top:6px;left:8px;font-size:.58rem;font-family:var(--font-mono);color:var(--text);
+  background:rgba(0,0,0,.6);padding:.1rem .42rem;border-radius:4px;backdrop-filter:blur(4px);font-weight:600}
+.thumb .psnr{position:absolute;bottom:6px;right:8px;font-size:.58rem;font-family:var(--font-mono);color:var(--amber);
+  background:rgba(0,0,0,.6);padding:.1rem .42rem;border-radius:4px;backdrop-filter:blur(4px);font-weight:700;transition:color .6s ease}
+@keyframes noiseFlicker{0%,100%{opacity:.7}50%{opacity:1}}
+
+.ro-issues{display:flex;flex-direction:column;gap:.3rem;flex-shrink:0;
+  opacity:0;max-height:0;overflow:hidden;transition:all .5s ease}
+.ro-issues.show{opacity:1;max-height:220px;margin-top:.2rem}
+.issue{display:flex;align-items:center;gap:.5rem;padding:.35rem .58rem;border-radius:7px;
+  background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.32);
+  font-family:var(--font-mono);font-size:.66rem;color:#fbbf24;
+  opacity:0;transform:translateX(-8px);animation:issueIn .4s cubic-bezier(.22,1,.36,1) forwards}
+.issue:nth-child(1){animation-delay:.1s}.issue:nth-child(2){animation-delay:.3s}.issue:nth-child(3){animation-delay:.5s}
+.issue .ix{display:inline-flex;width:14px;height:14px;border-radius:50%;background:#f59e0b;color:#0a0e1a;
+  align-items:center;justify-content:center;font-weight:900;font-size:.68rem;flex-shrink:0;
+  box-shadow:0 0 8px rgba(245,158,11,.5)}
+@keyframes issueIn{to{opacity:1;transform:none}}
+
+/* ═══ ACT 1 DONE CARD ═══ */
+.act1-done{position:absolute;left:12px;right:12px;bottom:46px;padding:.7rem .9rem;border-radius:10px;
+  background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(34,211,238,.1));
+  border:1px solid rgba(16,185,129,.4);display:flex;align-items:center;gap:.7rem;
+  box-shadow:0 8px 28px rgba(16,185,129,.2);
+  opacity:0;transform:translateY(12px);transition:all .6s cubic-bezier(.22,1,.36,1);pointer-events:none;z-index:10}
+.act1-done.show{opacity:1;transform:none}
+.act1-done .fc-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--green),var(--cyan));
+  display:flex;align-items:center;justify-content:center;color:#001;font-weight:900;font-size:1rem;
+  box-shadow:0 0 14px rgba(16,185,129,.5);flex-shrink:0}
+.act1-done .fc-text{flex:1;min-width:0}
+.act1-done .fc-title{font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:1px}
+.act1-done .fc-sub{font-size:.64rem;color:var(--dim);font-family:var(--font-mono)}
+.act1-done .fc-stats{display:flex;gap:.7rem;font-size:.66rem;font-family:var(--font-mono);color:var(--green);font-weight:700}
+
+/* ═══════════════════════════════════════════════════════════════
+   OVERLAY STAGES (user prompt, arena, discovery, result)
+   ═══════════════════════════════════════════════════════════════ */
+.overlay{position:absolute;inset:0;display:none;flex-direction:column;background:var(--bg);z-index:12;
+  animation:overlayIn .7s cubic-bezier(.22,1,.36,1)}
+.overlay.show{display:flex}
+@keyframes overlayIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* User prompt */
+.chat-host{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1.2rem;flex:1;padding:2rem;
+  background:radial-gradient(ellipse 60% 50% at 50% 30%,rgba(168,85,247,.1),transparent 70%)}
+.chat-row{display:flex;gap:.85rem;max-width:680px;width:100%;
+  opacity:0;transform:translateY(10px);transition:all .55s cubic-bezier(.22,1,.36,1)}
+.chat-row.on{opacity:1;transform:translateY(0)}
+.chat-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:.95rem;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 3px 10px rgba(0,0,0,.35)}
+.chat-av.user{background:linear-gradient(135deg,#38bdf8,#0284c7)}
+.chat-av.bot{background:conic-gradient(from 180deg,var(--purple),var(--pink),var(--cyan),var(--purple));
+  animation:logoSpin 8s linear infinite;position:relative}
+.chat-av.bot::after{content:'';position:absolute;inset:5px;border-radius:50%;background:var(--bg2)}
+.chat-av.bot::before{content:'✦';position:absolute;z-index:1;font-size:.95rem;font-weight:900;
+  background:linear-gradient(135deg,var(--pink),var(--cyan));-webkit-background-clip:text;color:transparent}
+.chat-bubble{background:rgba(20,27,51,.85);border:1px solid var(--border2);border-radius:14px;padding:.9rem 1.1rem;
+  font-size:.88rem;color:var(--text);line-height:1.58;box-shadow:0 4px 18px rgba(0,0,0,.35);position:relative;flex:1;backdrop-filter:blur(6px)}
+.chat-row.user .chat-bubble{background:linear-gradient(135deg,rgba(56,189,248,.08),rgba(2,132,199,.06));border-color:rgba(56,189,248,.35);color:#e0f2fe}
+.chat-row.bot .chat-bubble{background:linear-gradient(135deg,rgba(168,85,247,.08),rgba(236,72,153,.06));border-color:rgba(168,85,247,.4)}
+.chat-meta{font-size:.58rem;color:var(--muted);margin-top:.35rem;font-family:var(--font-mono);letter-spacing:.4px}
+.chat-caret{display:inline-block;width:2px;height:1em;background:var(--cyan);vertical-align:text-bottom;margin-left:2px;
+  animation:caret 1s step-end infinite}
+.typing-dots{display:inline-flex;gap:4px;align-items:center}
+.typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--cyan);opacity:.3;
+  animation:typingDot 1.2s ease-in-out infinite}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes typingDot{0%,60%,100%{opacity:.25;transform:scale(.85)}30%{opacity:1;transform:scale(1.1)}}
+
+/* ═══ ARENA ═══ */
+.arena-root{display:flex;flex-direction:column;flex:1;padding:1rem 1.4rem;gap:.65rem;min-height:0}
+.arena-hd{display:flex;align-items:center;gap:.7rem;padding:.15rem 0;flex-shrink:0}
+.gen-badge{font-size:.6rem;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--pink),var(--purple));
+  padding:4px 10px;border-radius:12px;letter-spacing:.6px;font-family:var(--font-mono);box-shadow:var(--glow-pink)}
+.round-badge{font-size:.58rem;color:var(--dim);font-family:var(--font-mono);letter-spacing:.5px;
+  padding:3px 9px;background:rgba(20,27,51,.6);border:1px solid var(--border);border-radius:10px}
+.arena-title{font-size:.78rem;font-weight:700;color:var(--text);letter-spacing:-.2px}
+.arena-title .mdl{font-size:.6rem;color:var(--muted);font-weight:400;margin-left:.3rem;font-family:var(--font-mono);letter-spacing:.5px}
+.arena-status{font-size:.66rem;color:var(--dim);margin-left:auto;font-family:var(--font-mono)}
+.arena-status .v{color:var(--pink);font-weight:700}
+
+.islands{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;flex-shrink:0}
+.isl{background:rgba(20,27,51,.65);border:1.5px solid var(--border);border-radius:10px;padding:.55rem .65rem;
+  position:relative;overflow:hidden;transition:all .5s cubic-bezier(.22,1,.36,1);min-height:94px;
+  opacity:0;transform:translateY(8px) scale(.96);backdrop-filter:blur(4px)}
+.isl.on{opacity:1;transform:translateY(0) scale(1)}
+.isl.alive{border-color:rgba(168,85,247,.5);box-shadow:0 0 0 1px rgba(168,85,247,.2),0 2px 6px rgba(168,85,247,.12)}
+.isl.training{border-color:rgba(34,211,238,.55);box-shadow:0 0 0 1px rgba(34,211,238,.2),0 2px 8px rgba(34,211,238,.18)}
+.isl.survived{border-color:rgba(16,185,129,.6);box-shadow:0 0 0 1px rgba(16,185,129,.2),0 2px 8px rgba(16,185,129,.18)}
+.isl.eliminated{opacity:.28;filter:grayscale(.6);border-style:dashed}
+.isl.winner{border-color:var(--gold);background:linear-gradient(135deg,rgba(251,191,36,.12),rgba(245,158,11,.06));
+  box-shadow:0 0 0 2px rgba(251,191,36,.25),0 4px 18px rgba(251,191,36,.25)}
+.isl-head{display:flex;align-items:center;gap:.4rem;margin-bottom:.32rem}
+.isl-em{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  font-size:.65rem;font-weight:800;color:#fff;font-family:var(--font-mono);flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.isl-name{font-size:.64rem;font-weight:700;color:var(--text);flex:1;overflow:hidden;
+  white-space:nowrap;text-overflow:ellipsis}
+.isl-id{font-size:.52rem;font-family:var(--font-mono);color:var(--muted)}
+.isl-psnr{font-size:.9rem;font-weight:700;font-family:var(--font-mono);color:var(--text);transition:color .3s}
+.isl.winner .isl-psnr{color:var(--gold);text-shadow:0 0 12px rgba(251,191,36,.45)}
+.isl.survived .isl-psnr{color:#34d399}
+.isl-bar-wrap{height:4px;background:rgba(31,41,66,.8);border-radius:2px;margin-top:.25rem;overflow:hidden}
+.isl-bar{height:100%;border-radius:2px;transition:width .3s linear;
+  background:linear-gradient(90deg,var(--cyan),var(--purple))}
+.isl.survived .isl-bar{background:linear-gradient(90deg,var(--green),#34d399)}
+.isl.winner .isl-bar{background:linear-gradient(90deg,var(--gold),#fbbf24)}
+.isl.eliminated .isl-bar{background:var(--muted)}
+.isl-status{font-size:.54rem;color:var(--dim);font-family:var(--font-mono);margin-top:.22rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.isl-status.win{color:var(--gold);font-weight:700}
+
+.arena-btm{display:grid;grid-template-columns:1.1fr 1fr;gap:.55rem;flex:1;min-height:0}
+.psnr-race{background:rgba(20,27,51,.55);border:1px solid var(--border);border-radius:10px;padding:.55rem .75rem;
+  display:flex;flex-direction:column;min-width:0}
+.race-title{font-size:.68rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem}
+.race-title .step{font-family:var(--font-mono);font-size:.6rem;color:var(--dim);margin-left:auto;font-weight:500}
+.race-canvas{flex:1;width:100%;border-radius:6px;background:rgba(10,14,26,.7);min-height:0}
+
+.ledger{background:rgba(20,27,51,.55);border:1px solid var(--border);border-radius:10px;padding:.55rem .75rem;
+  display:flex;flex-direction:column;min-width:0}
+.ledger-title{font-size:.68rem;font-weight:700;color:var(--text);margin-bottom:.4rem;display:flex;align-items:center;gap:.35rem}
+.ledger-title .badge{font-size:.5rem;background:linear-gradient(135deg,var(--indigo),var(--pink));
+  color:#fff;padding:1px 7px;border-radius:8px;letter-spacing:.4px;font-family:var(--font-mono);font-weight:700}
+.ledger-body{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem;font-size:.62rem;min-height:0}
+.ledger-body::-webkit-scrollbar{width:4px}
+.ledger-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.ledger-entry{display:flex;gap:.4rem;opacity:0;transform:translateX(-4px);transition:all .4s;
+  padding:.32rem .42rem;border-radius:5px;border-left:2px solid var(--indigo);background:rgba(99,102,241,.06);line-height:1.4}
+.ledger-entry.on{opacity:1;transform:translateX(0)}
+.ledger-entry.worked{border-left-color:var(--green);background:rgba(16,185,129,.06)}
+.ledger-entry.failed{border-left-color:var(--red);background:rgba(239,68,68,.06)}
+.ledger-entry.synthesis{border-left-color:var(--gold);background:rgba(251,191,36,.08)}
+.ledger-gen{font-family:var(--font-mono);color:var(--muted);font-size:.56rem;flex-shrink:0;width:30px;font-weight:700}
+.ledger-txt{flex:1;color:var(--dim)}
+.ledger-txt b{color:var(--text)}
+.ledger-txt .tag{display:inline-block;font-family:var(--font-mono);font-size:.52rem;padding:0 5px;
+  background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);border-radius:3px;color:#a5b4fc;margin-right:.3rem}
+
+/* ═══ DISCOVERY MODAL ═══ */
+.discovery-modal{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(10,14,26,.95),rgba(10,14,26,.98));
+  backdrop-filter:blur(10px);opacity:0;pointer-events:none;transition:opacity .6s ease;z-index:14}
+.discovery-modal.on{opacity:1;pointer-events:auto}
+.discovery-card{background:linear-gradient(135deg,rgba(20,27,51,.98),rgba(15,20,36,.98));
+  border:2px solid var(--gold);border-radius:18px;padding:1.8rem 2.2rem;
+  max-width:620px;box-shadow:0 30px 70px rgba(251,191,36,.25),inset 0 0 30px rgba(251,191,36,.05);position:relative;
+  transform:scale(.88) translateY(20px);opacity:0;transition:all .6s cubic-bezier(.22,1,.36,1)}
+.discovery-card::before{content:'';position:absolute;inset:-2px;border-radius:18px;
+  background:conic-gradient(from 0deg,var(--gold),var(--pink),var(--purple),var(--gold));
+  z-index:-1;opacity:.35;animation:rotateGlow 6s linear infinite;filter:blur(12px)}
+.discovery-modal.on .discovery-card{transform:scale(1) translateY(0);opacity:1}
+.discovery-tag{font-size:.6rem;color:var(--gold);font-weight:700;letter-spacing:3px;font-family:var(--font-mono);margin-bottom:.5rem;text-align:center}
+.discovery-name{font-size:2.6rem;font-weight:900;letter-spacing:-1.5px;text-align:center;
+  background:linear-gradient(135deg,var(--gold) 0%,var(--pink) 50%,var(--purple) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.3rem;line-height:1;
+  filter:drop-shadow(0 0 24px rgba(251,191,36,.4))}
+.discovery-sub{font-size:.82rem;color:var(--dim);margin-bottom:1rem;font-style:italic;text-align:center}
+.discovery-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.55rem;margin:.8rem 0 1rem}
+.dstat{text-align:center;padding:.55rem .55rem;background:rgba(15,20,36,.8);border-radius:10px;border:1px solid var(--border2)}
+.dstat-l{font-size:.52rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:700}
+.dstat-v{font-size:1.15rem;font-weight:800;font-family:var(--font-mono);color:var(--text);margin-top:.15rem}
+.dstat-v.pos{color:#34d399;text-shadow:0 0 10px rgba(52,211,153,.4)}
+.dstat-v.gold{color:var(--gold);text-shadow:0 0 10px rgba(251,191,36,.5)}
+.discovery-techs{font-size:.7rem;color:var(--text);line-height:1.6}
+.discovery-techs b{color:var(--pink)}
+.dtech{display:flex;gap:.45rem;padding:.35rem .55rem;background:rgba(15,20,36,.75);border-radius:6px;margin-top:.35rem;
+  border-left:2px solid var(--pink);opacity:0;transform:translateX(-8px);transition:all .35s}
+.dtech.on{opacity:1;transform:translateX(0)}
+.dtech-i{font-family:var(--font-mono);font-size:.58rem;color:var(--pink);font-weight:800;flex-shrink:0;width:22px}
+.dtech-t{flex:1;color:var(--dim)}
+.dtech-t code{background:rgba(168,85,247,.15);padding:0 5px;border-radius:3px;font-family:var(--font-mono);font-size:.62rem;color:#c084fc}
+.dtech-t b{color:var(--text)}
+
+/* ═══ RESULT VIEW ═══ */
+.result-root{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,.95fr);gap:1rem;flex:1;padding:1.2rem 1.4rem;min-height:0}
+.res-vid-wrap{position:relative;border-radius:14px;overflow:hidden;min-width:0;
+  border:1px solid var(--border2);background:#000;
+  box-shadow:0 14px 40px rgba(0,0,0,.5),0 0 0 1px rgba(251,191,36,.2),0 0 30px rgba(168,85,247,.25)}
+.res-vid-wrap video{width:100%;height:100%;object-fit:cover;display:block}
+.vid-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(10,14,26,.9);color:var(--dim);font-size:.85rem;transition:opacity .5s;font-family:var(--font-mono)}
+.vid-loading.hide{opacity:0;pointer-events:none}
+.vid-corner{position:absolute;top:10px;right:12px;font-size:.62rem;font-family:var(--font-mono);
+  color:#fff;background:rgba(0,0,0,.55);padding:.2rem .55rem;border-radius:5px;backdrop-filter:blur(8px);
+  display:flex;align-items:center;gap:.35rem;font-weight:600;letter-spacing:.5px;
+  border:1px solid rgba(255,255,255,.1)}
+.vid-corner::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--pink);box-shadow:0 0 6px currentColor;animation:dotPulse 1s ease-in-out infinite}
+.vid-bottom-tag{position:absolute;left:12px;bottom:12px;font-size:.65rem;font-family:var(--font-mono);
+  color:#fff;background:rgba(0,0,0,.55);padding:.25rem .6rem;border-radius:5px;backdrop-filter:blur(8px);
+  border:1px solid rgba(251,191,36,.3);font-weight:600}
+.vid-bottom-tag .v{color:var(--gold);font-weight:800}
+
+.res-panel{display:flex;flex-direction:column;gap:.65rem;min-width:0;min-height:0}
+.fcard{background:linear-gradient(135deg,rgba(251,191,36,.06),rgba(236,72,153,.04));
+  border:1px solid rgba(251,191,36,.3);border-radius:14px;padding:1.1rem 1.2rem;
+  box-shadow:0 8px 28px rgba(251,191,36,.1)}
+.fcard h3{font-size:.92rem;font-weight:800;display:flex;align-items:center;gap:.45rem;margin-bottom:.5rem;color:var(--gold)}
+.psnr-big{font-size:2.4rem;font-weight:900;text-align:center;margin:.5rem 0;letter-spacing:-1.5px;
+  background:linear-gradient(135deg,var(--gold),var(--pink),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 20px rgba(251,191,36,.4))}
+.psnr-tgt{text-align:center;font-size:.7rem;color:var(--dim);margin-bottom:.6rem;font-family:var(--font-mono)}
+.badge{display:inline-flex;align-items:center;gap:.2rem;padding:2px 7px;border-radius:4px;font-size:.6rem;font-weight:700;font-family:var(--font-mono)}
+.badge-ok{background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.3)}
+.badge-disc{background:rgba(251,191,36,.15);color:var(--gold);border:1px solid rgba(251,191,36,.3)}
+.fstat{display:flex;justify-content:space-between;padding:.28rem 0;font-size:.72rem;border-bottom:1px solid var(--border);font-family:var(--font-mono)}
+.fstat:last-child{border:none}.fstat .fl{color:var(--dim)}.fstat .fv{color:var(--text);font-weight:600}
+.fstat .fv.g{color:#34d399}.fstat .fv.pink{color:var(--pink)}.fstat .fv.gold{color:var(--gold)}
+
+.ffiles{background:rgba(20,27,51,.5);border:1px solid var(--border);border-radius:10px;padding:.75rem .85rem}
+.ffiles h4{font-size:.66rem;color:var(--dim);margin-bottom:.45rem;display:flex;align-items:center;gap:.35rem;font-family:var(--font-mono);letter-spacing:.4px}
+.ff{font-family:var(--font-mono);font-size:.62rem;padding:2px 0;display:flex;align-items:center;gap:.4rem;color:var(--text)}
+.ff-c{color:#34d399;font-size:.64rem}
+.ff-d{color:var(--gold);font-size:.64rem}
+
+/* ═══ FOOTER ═══ */
+.footer{flex-shrink:0;display:flex;align-items:center;padding:.45rem 1.4rem;height:32px;
+  background:linear-gradient(180deg,rgba(15,20,36,.6),rgba(10,14,26,.9));backdrop-filter:blur(8px);
+  border-top:1px solid var(--border);font-size:.64rem;font-family:var(--font-mono);color:var(--muted);gap:1.2rem}
+.footer .fstat-f{display:flex;align-items:center;gap:.4rem}
+.footer .v{color:var(--text);font-weight:600}
+.footer .ok{color:#34d399}
+.footer-spacer{flex:1}
+
+/* ═══ REPLAY ═══ */
+.replay{position:fixed;bottom:46px;right:18px;z-index:50;
+  padding:.55rem .9rem;border-radius:8px;border:1px solid var(--border2);background:rgba(15,20,36,.85);
+  backdrop-filter:blur(10px);color:var(--text);font-size:.72rem;font-family:var(--font-mono);font-weight:600;
+  cursor:pointer;display:flex;align-items:center;gap:.45rem;transition:all .3s;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;transform:translateY(8px);pointer-events:none}
+.replay.show{opacity:1;transform:none;pointer-events:auto}
+.replay:hover{border-color:var(--pink);color:var(--pink);box-shadow:0 8px 24px rgba(236,72,153,.3)}
+.replay svg{width:13px;height:13px}
+</style>
+</head>
+<body>
+
+<div class="particles" id="particles"></div>
+
+<div id="intro">
+  <div class="glow"></div>
+  <div class="tag">S P L A T I F Y</div>
+  <h1>Paper → Code → Discover</h1>
+  <p>A Claude agent reads a 3DGS paper end-to-end and writes the implementation. Then 8 specialized agents compete across generations to discover a novel method that beats the baseline — live.</p>
+  <div class="sub">GAUSSIAN SPLATTING · READ · REASON · WRITE · RENDER · DISCOVER</div>
+  <div class="intro-bar"><span></span><span></span><span></span><span></span><span></span></div>
+</div>
+
+<div id="app">
+  <header>
+    <div class="logo"><div class="logo-mark"></div><span class="logo-text">Splatify</span></div>
+    <div class="h-divider"></div>
+    <div class="crumbs">
+      <span id="crumb-src">arxiv:2308.04079</span><span class="arrow">›</span>
+      <span id="crumb-paper">3D Gaussian Splatting</span><span class="arrow">›</span>
+      <span class="current" id="crumb">parse</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="h-stats">
+      <div class="stat"><div class="dot"></div><span>orchestrator</span></div>
+      <div class="stat">tokens <span class="v" id="tokCount">0</span></div>
+      <div class="stat">model <span class="v">claude-opus-4.7</span></div>
+    </div>
+    <div class="h-divider"></div>
+    <div class="timer" id="timer">00:00.0</div>
+  </header>
+
+  <div class="pipeline" id="pipeline">
+    <div class="pstep" data-step="parse"><div class="pi"></div><span>parse</span></div>
+    <div class="parrow">›</div>
+    <div class="pstep" data-step="read"><div class="pi"></div><span>read</span></div>
+    <div class="parrow">›</div>
+    <div class="pstep" data-step="citations"><div class="pi"></div><span>citations</span></div>
+    <div class="parrow">›</div>
+    <div class="pstep" data-step="plan"><div class="pi"></div><span>plan</span></div>
+    <div class="parrow">›</div>
+    <div class="pstep" data-step="code"><div class="pi"></div><span>code</span></div>
+    <div class="parrow">›</div>
+    <div class="pstep" data-step="render"><div class="pi"></div><span>render</span></div>
+    <div class="parrow">›</div>
+    <div class="pstep" data-step="fix"><div class="pi"></div><span>fix</span></div>
+    <div class="pact-divider"><span></span>USER<span></span></div>
+    <div class="pstep act2" data-step="arena"><div class="pi"></div><span>arena</span></div>
+    <div class="parrow">›</div>
+    <div class="pstep act2" data-step="evolve"><div class="pi"></div><span>evolve</span></div>
+    <div class="parrow">›</div>
+    <div class="pstep act2 champ" data-step="champion"><div class="pi"></div><span>champion</span></div>
+    <div class="parrow">›</div>
+    <div class="pstep act2" data-step="result"><div class="pi"></div><span>render</span></div>
+  </div>
+
+  <div class="gen-progress" id="genProgress" style="--p:0%"></div>
+
+  <main id="mainPanes">
+    <!-- Paper pane -->
+    <section class="pane">
+      <div class="pane-head">
+        <div class="pane-icon ic-paper">P</div>
+        <div><div class="pane-title">gaussian_splatting_2308.04079.pdf</div></div>
+        <div class="pane-sub">PDF · arxiv</div>
+      </div>
+      <div class="paper-wrap">
+        <div class="scan-line" id="scanLine"></div>
+        <div class="paper">
+          <div class="paper-scroll" id="paperScroll">
+            <h2>3D Gaussian Splatting for Real-Time Radiance Field Rendering</h2>
+            <div class="authors">Bernhard Kerbl · Georgios Kopanas · Thomas Leimkühler · George Drettakis</div>
+            <div class="venue">ACM SIGGRAPH 2023 · Inria &amp; MPII</div>
+            <div class="abstract" id="p-abs">
+              <b>Abstract.</b> Radiance field methods have achieved photo-realistic synthesis of scenes captured with multiple photos. We introduce three key elements: (1) starting from sparse SfM points, we represent the scene with <span class="key">3D anisotropic Gaussians</span>; (2) we <span class="key">interleave optimization</span> with adaptive <span class="key">density control</span>; (3) we develop a fast visibility-aware, <span class="key">tile-based rasterizer</span>. Real-time rendering at state-of-the-art quality.
+            </div>
+            <div class="sec" id="p-sec1"><span class="num">1</span>Introduction</div>
+            <p>Radiance field methods, starting with NeRF, have achieved high-quality novel-view synthesis from a set of photos. However, volumetric MLPs are slow to train and render. We propose an <b>explicit</b> representation: a set of 3D Gaussians that can be projected and composited via a tile-based GPU rasterizer.</p>
+            <div class="sec" id="p-sec3"><span class="num">3</span>3D Gaussian Representation</div>
+            <p>We represent the scene as a set of <code>N</code> 3D Gaussians, each with a mean <code>μ</code>, a covariance matrix <code>Σ</code>, an opacity <code>α</code>, and spherical-harmonic (SH) color coefficients for view-dependent appearance:</p>
+            <div class="equation" id="p-eq1">G(x) = exp(−½(x−μ)ᵀ Σ⁻¹ (x−μ)) <span class="lbl">(1)</span></div>
+            <p>For optimization stability Σ is parameterized via a rotation <code>R</code> (quaternion) and a diagonal scale <code>S</code>:</p>
+            <div class="equation" id="p-eq2">Σ = R S Sᵀ Rᵀ <span class="lbl">(2)</span></div>
+            <div class="sec" id="p-sec31"><span class="num">3.1</span>Differentiable Tile Rasterization</div>
+            <p>We project each 3D Gaussian to 2D, sort by depth inside <b>16×16 tiles</b>, and composite front-to-back using α-blending identical to NeRF's volume rendering:</p>
+            <div class="equation" id="p-eq3">C(p) = Σᵢ αᵢ Tᵢ cᵢ(d),&nbsp;&nbsp;&nbsp; Tᵢ = Πⱼ&lt;ᵢ (1 − αⱼ) <span class="lbl">(3)</span></div>
+            <p>The rasterizer is fully differentiable and written in CUDA; gradients flow through the α-blending to position, scale, rotation, opacity, and SH coefficients.</p>
+            <div class="sec" id="p-sec32"><span class="num">3.2</span>Optimization</div>
+            <p>We supervise rendered images with the photometric L1 loss combined with a D-SSIM term:</p>
+            <div class="equation" id="p-eq4">L = (1 − λ) L₁ + λ L<sub>D-SSIM</sub>,&nbsp;&nbsp;λ = 0.2 <span class="lbl">(4)</span></div>
+            <p>We use <b>Adam</b> with exponentially-decaying learning rates on positions (1.6×10⁻⁴ → 1.6×10⁻⁶). Opacities, scales, rotations and SH coefficients have separate learning rates. Training runs <span class="key">30,000 iterations</span>.</p>
+            <div class="sec" id="p-sec33"><span class="num">3.3</span>Adaptive Density Control</div>
+            <p>Every 100 iterations, we densify and prune Gaussians based on the magnitude of the view-space position gradient ∇<sub>p</sub>L:</p>
+            <ul>
+              <li><b>Clone</b>: small Gaussians (‖s‖ &lt; τ<sub>s</sub>) with high gradient → duplicate and nudge along gradient.</li>
+              <li><b>Split</b>: large Gaussians with high gradient → split into two smaller Gaussians with <code>s ← s/1.6</code>.</li>
+              <li><b>Prune</b>: Gaussians with opacity α &lt; ε<sub>α</sub> or world-space scale &gt; 10% of scene extent are removed.</li>
+            </ul>
+            <div class="figure">figure 4 · densification</div>
+            <div class="sec" id="p-sec4"><span class="num">4</span>Implementation &amp; Results</div>
+            <p>We implement the rasterizer in CUDA and the optimizer in PyTorch. MipNeRF360 outdoor scenes train to <b>27+ PSNR</b> in ~30 minutes on an A6000 and render at 130 FPS at 1080p.</p>
+            <p>Hyperparameters: SH degree 3, densification from step 500 to 15000, opacity reset every 3000, gradient threshold 2×10⁻⁴, λ<sub>ssim</sub> = 0.2.</p>
+            <div class="figure">figure 7 · comparisons</div>
+            <div class="sec">References</div>
+            <div class="ref" id="ref-1">[1] Mildenhall et al. <b>NeRF</b>: Representing Scenes as Neural Radiance Fields. ECCV 2020.</div>
+            <div class="ref" id="ref-2">[2] Mueller et al. <b>Instant-NGP</b>: Instant neural graphics primitives. SIGGRAPH 2022.</div>
+            <div class="ref" id="ref-3">[3] Barron et al. <b>Mip-NeRF 360</b>: Unbounded anti-aliased neural radiance fields. CVPR 2022.</div>
+            <div class="ref" id="ref-4">[4] Zwicker et al. <b>EWA Splatting</b>. IEEE TVCG 2002.</div>
+          </div>
+        </div>
+        <div class="page-no" id="pageNo">1 / 14</div>
+      </div>
+    </section>
+
+    <!-- Agent pane -->
+    <section class="pane">
+      <div class="pane-head">
+        <div class="pane-icon ic-agent">A</div>
+        <div><div class="pane-title">Agent · reasoning</div></div>
+        <div class="pane-sub"><span class="live-pill"><span class="ld"></span>LIVE</span></div>
+      </div>
+      <div class="agent-wrap">
+        <div class="agent-brain">
+          <div class="brain-orb thinking" id="orb"></div>
+          <div class="brain-status" id="brainStatus">Booting orchestrator<span class="thinking-dots"><span></span><span></span><span></span></span></div>
+          <div class="brain-sub" id="brainSub">claude-opus-4.7 · temperature 0.2</div>
+        </div>
+        <div class="tokens-section">
+          <div class="tokens-label">extracted concepts</div>
+          <div class="tokens" id="tokens"></div>
+        </div>
+        <div class="thoughts" id="thoughts"></div>
+      </div>
+    </section>
+
+    <!-- Code pane -->
+    <section class="pane">
+      <div class="pane-head">
+        <div class="pane-icon ic-code">&lt;/&gt;</div>
+        <div><div class="pane-title">gs_template — generated</div></div>
+        <div class="pane-sub" id="codeFileName">model.py</div>
+      </div>
+      <div class="code-tabs" id="codeTabs">
+        <div class="tab" data-file="model"><span class="file-i">📄</span>model.py</div>
+        <div class="tab" data-file="losses"><span class="file-i">📄</span>losses.py</div>
+        <div class="tab" data-file="rendering"><span class="file-i">📄</span>rendering.py</div>
+        <div class="tab" data-file="configs"><span class="file-i">📄</span>configs.py</div>
+      </div>
+      <div class="code-wrap">
+        <div class="code-body">
+          <div class="gutter" id="gutter"></div>
+          <div class="code-content" id="code"></div>
+        </div>
+        <div class="code-status">
+          <div class="lhs">
+            <div class="gen-dot"></div>
+            <span>generating <span class="v" id="curFile">model.py</span></span>
+          </div>
+          <div class="rhs">
+            <span>lines <span class="v" id="lineCount">0</span></span>
+            <span>•</span>
+            <span class="lang-badge">PYTHON</span>
+            <span>•</span>
+            <span>UTF-8</span>
+          </div>
+        </div>
+        <!-- Render overlay: 4 thumbs + issues + fixed view -->
+        <div class="render-overlay" id="renderOverlay">
+          <div class="ro-head">
+            <div class="ro-title">
+              <span class="ro-dataset" id="roDataset">DrJohnson</span>
+              <span class="ro-sub" id="roSub">rendering 4 preview frames…</span>
+            </div>
+            <div class="ro-meta" id="roMeta">iter 3000 · PSNR <span class="v">22.4</span></div>
+          </div>
+          <div class="ro-grid" id="roGrid">
+            <div class="thumb"><img src="./nebula-assets/frames/frame_0020.png" alt="view 0"><div class="thumb-fx"></div><span class="lbl">view 0 · front</span><span class="psnr" data-low="21.8" data-high="31.2">21.8</span></div>
+            <div class="thumb"><img src="./nebula-assets/frames/frame_0060.png" alt="view 1"><div class="thumb-fx"></div><span class="lbl">view 1 · side</span><span class="psnr" data-low="22.6" data-high="31.6">22.6</span></div>
+            <div class="thumb"><img src="./nebula-assets/frames/frame_0100.png" alt="view 2"><div class="thumb-fx"></div><span class="lbl">view 2 · back</span><span class="psnr" data-low="22.1" data-high="31.1">22.1</span></div>
+            <div class="thumb"><img src="./nebula-assets/frames/frame_0140.png" alt="view 3"><div class="thumb-fx"></div><span class="lbl">view 3 · wide</span><span class="psnr" data-low="23.0" data-high="31.7">23.0</span></div>
+          </div>
+          <div class="ro-issues" id="roIssues">
+            <div class="issue"><span class="ix">!</span> floaters in low-density regions (visible on view 0, 2)</div>
+            <div class="issue"><span class="ix">!</span> over-opaque Gaussians on specular highlights (view 1)</div>
+            <div class="issue"><span class="ix">!</span> opacity reset interval too aggressive — losing detail at 3000</div>
+          </div>
+        </div>
+
+        <div class="act1-done" id="act1Done">
+          <div class="fc-icon">✓</div>
+          <div class="fc-text">
+            <div class="fc-title">Paper implemented · baseline rendered</div>
+            <div class="fc-sub">8 files · 1 fix iter · 27.1 PSNR · 0 errors</div>
+          </div>
+          <div class="fc-stats"><span>PSNR 27.1 ✓</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- USER PROMPT OVERLAY -->
+  <div class="overlay" id="promptOverlay">
+    <div class="chat-host">
+      <div class="chat-row user" id="crUser">
+        <div class="chat-av user">S</div>
+        <div class="chat-bubble">
+          <div id="userTxt"></div>
+          <div class="chat-meta">you · just now</div>
+        </div>
+      </div>
+      <div class="chat-row bot" id="crBot">
+        <div class="chat-av bot"></div>
+        <div class="chat-bubble">
+          <div id="botTxt"></div>
+          <div class="chat-meta" id="botMeta">splatify orchestrator</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARENA OVERLAY -->
+  <div class="overlay" id="arenaOverlay">
+    <div class="arena-root">
+      <div class="arena-hd">
+        <span class="gen-badge" id="genBadge">GEN 1</span>
+        <span class="round-badge" id="roundBadge">R1 · 2k iters · 8 → 4</span>
+        <div class="arena-title">🏟️ Knowledge Discovery Arena <span class="mdl">8 island agents · parallel evolutionary tournament</span></div>
+        <div class="arena-status" id="arenaStatus">Baseline: <span class="v" id="asBaseline">28.30 dB</span> &middot; Best: <span class="v" id="asBest">— dB</span></div>
+      </div>
+      <div class="islands" id="islands"></div>
+      <div class="arena-btm">
+        <div class="psnr-race">
+          <div class="race-title">📊 Live PSNR Race <span class="step" id="raceStep">step 0 / 2000</span></div>
+          <canvas class="race-canvas" id="cRace"></canvas>
+        </div>
+        <div class="ledger">
+          <div class="ledger-title">📚 Knowledge Ledger <span class="badge">COMPOUNDS ACROSS GENS</span></div>
+          <div class="ledger-body" id="ledgerBody"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DISCOVERY MODAL -->
+  <div class="discovery-modal" id="discoveryModal">
+    <div class="discovery-card">
+      <div class="discovery-tag">★ NOVEL METHOD DISCOVERED ★</div>
+      <div class="discovery-name">NebulaGS</div>
+      <div class="discovery-sub">Physics-Informed Gaussian Splatting for Volumetric Emission</div>
+      <div class="discovery-stats">
+        <div class="dstat"><div class="dstat-l">PSNR</div><div class="dstat-v gold">31.72</div></div>
+        <div class="dstat"><div class="dstat-l">Δ Baseline</div><div class="dstat-v pos">+3.42</div></div>
+        <div class="dstat"><div class="dstat-l">Generations</div><div class="dstat-v">3</div></div>
+      </div>
+      <div class="discovery-techs">
+        <b>Techniques emerged through cross-generation knowledge transfer:</b>
+        <div class="dtech"><div class="dtech-i">L1</div><div class="dtech-t">Linear warmup on physics losses (<code>0 → 0.008</code>) over first <code>3k</code> steps — gentle priors, not hard constraints</div></div>
+        <div class="dtech"><div class="dtech-i">L2</div><div class="dtech-t">Opacity ceiling at <code>0.95</code> instead of pushing to 0.5 — preserves emission semantics</div></div>
+        <div class="dtech"><div class="dtech-i">L3</div><div class="dtech-t">Per-Gaussian <code>emission_rgb</code> parameter (synthesized from Gen 1 + 2 winners)</div></div>
+        <div class="dtech"><div class="dtech-i">L4</div><div class="dtech-t">Multi-scale L1 reconstruction loss (<code>λ=0.5</code>) — cooperates with main L1, stable</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT OVERLAY -->
+  <div class="overlay" id="resultOverlay">
+    <div class="result-root">
+      <div class="res-vid-wrap">
+        <video id="resultVid" autoplay loop muted playsinline preload="metadata">
+          <source src="./nebula.mp4" type="video/mp4">
+        </video>
+        <div class="vid-corner">nebulags · live · 30fps</div>
+        <div class="vid-bottom-tag">NebulaGS · garden · <span class="v">31.72 dB</span></div>
+        <div class="vid-loading" id="vidLoad">Rendering NebulaGS output…</div>
+      </div>
+      <div class="res-panel">
+        <div class="fcard" id="fcard">
+          <h3>🏆 Discovery Complete</h3>
+          <div class="psnr-big">31.72 dB</div>
+          <div class="psnr-tgt">Baseline: 28.30 dB &middot; <span class="badge badge-disc">+3.42 dB</span> <span class="badge badge-ok">✓ BEAT</span></div>
+          <div class="fstat"><span class="fl">Discovered</span><span class="fv pink">NebulaGS</span></div>
+          <div class="fstat"><span class="fl">Dataset</span><span class="fv">volumetric nebula</span></div>
+          <div class="fstat"><span class="fl">Islands Trained</span><span class="fv">24 (8 × 3 gens)</span></div>
+          <div class="fstat"><span class="fl">Knowledge Entries</span><span class="fv gold">17</span></div>
+          <div class="fstat"><span class="fl">Debug Fixes</span><span class="fv">3 cycles</span></div>
+          <div class="fstat"><span class="fl">Tokens</span><span class="fv">3,184,502</span></div>
+          <div class="fstat"><span class="fl">Cost</span><span class="fv g">$12.84</span></div>
+          <div class="fstat"><span class="fl">Duration</span><span class="fv">47m 12s</span></div>
+        </div>
+        <div class="ffiles" id="ffiles"><h4><span>📦 GENERATED PACKAGE</span><span style="margin-left:auto;color:var(--muted);font-weight:400">9 files</span></h4></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="fstat-f"><span>status</span><span class="v ok">● running</span></div>
+    <div class="fstat-f"><span>cwd</span><span class="v">~/splatify/generated/gs_baseline</span></div>
+    <div class="fstat-f"><span>env</span><span class="v">nerfstudio</span></div>
+    <div class="footer-spacer"></div>
+    <div class="fstat-f"><span id="footMsg">orchestrator → parse</span></div>
+  </div>
+</div>
+
+<button class="replay" id="replay">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+  replay
+</button>
+
+<script>
+/* ═════════════════════════════════════════════════════════════════════
+   SPLATIFY DEMO — v3 — nerfify-style Act 1 · arena-style Act 2
+   ═════════════════════════════════════════════════════════════════════ */
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const lerp = (a,b,t) => a+(b-a)*t;
+const clamp = (v,lo,hi) => Math.max(lo,Math.min(hi,v));
+const fmt = n => n.toLocaleString();
+
+/* ─── particles ─── */
+const pc = $('particles');
+for(let i=0;i<24;i++){
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.style.left = (Math.random()*100)+'%';
+  p.style.animationDelay = (Math.random()*-20)+'s';
+  pc.appendChild(p);
+}
+
+/* ─── timer ─── */
+let t0=0, timerRAF=null;
+function startTimer(){
+  t0 = performance.now();
+  (function tick(){
+    const ms = performance.now()-t0;
+    const s = ms/1000;
+    const m = Math.floor(s/60);
+    const sec = (s%60).toFixed(1).padStart(4,'0');
+    $('timer').textContent = `${String(m).padStart(2,'0')}:${sec}`;
+    timerRAF = requestAnimationFrame(tick);
+  })();
+}
+function stopTimer(){ if(timerRAF) cancelAnimationFrame(timerRAF); }
+
+/* ─── steps + crumbs ─── */
+function setStep(name, status){
+  document.querySelectorAll('.pstep').forEach(el=>{
+    if(el.dataset.step===name){
+      el.classList.remove('done');
+      if(status==='active') el.classList.add('active');
+      if(status==='done'){ el.classList.remove('active'); el.classList.add('done'); }
+    }
+  });
+  $('crumb').textContent = name;
+  $('footMsg').textContent = `orchestrator → ${name}`;
+}
+function setStepDone(name){
+  document.querySelectorAll('.pstep').forEach(el=>{
+    if(el.dataset.step===name){el.classList.remove('active');el.classList.add('done')}
+  });
+}
+
+/* ─── brain ─── */
+function setBrain(text, sub){
+  $('brainStatus').innerHTML = `${text}<span class="thinking-dots"><span></span><span></span><span></span></span>`;
+  if(sub) $('brainSub').textContent = sub;
+}
+
+/* ─── tokens ─── */
+let tokCount=0;
+function renderTokCount(){
+  const n=tokCount;let s;
+  if(n>=1_000_000) s=(n/1_000_000).toFixed(2)+'M';
+  else if(n>=1_000) s=(n/1_000).toFixed(1)+'K';
+  else s=String(n);
+  $('tokCount').textContent=s;
+}
+function bumpTokens(n){tokCount+=n;renderTokCount()}
+
+let streamTimer=null, streamRate=0;
+function setStreamRate(r){streamRate=r}
+function startTokenStream(){
+  if(streamTimer)return;
+  streamTimer=setInterval(()=>{
+    if(streamRate>0){
+      const jitter=streamRate*(0.8+Math.random()*0.4);
+      bumpTokens(Math.round(jitter));
+    }
+  },60);
+}
+function stopTokenStream(){if(streamTimer){clearInterval(streamTimer);streamTimer=null}}
+
+function addToken(text, kind, icon){
+  const t=document.createElement('div');
+  t.className='tok'+(kind?' t-'+kind:'');
+  t.innerHTML=(icon?`<span class="tok-icon">${icon}</span>`:'')+text;
+  $('tokens').appendChild(t);
+  bumpTokens(2400+Math.floor(Math.random()*1600));
+}
+
+/* ─── thoughts ─── */
+function addThought(kind,html){
+  const div=document.createElement('div');
+  div.className='thought '+kind;
+  const labels={read:'R',think:'T',plan:'P',write:'W',cite:'C',fix:'F'};
+  div.innerHTML=`<div class="ti">${labels[kind]||'•'}</div><div>${html}</div>`;
+  $('thoughts').appendChild(div);
+  const all=$('thoughts').children;
+  while(all.length>9) all[0].remove();
+  bumpTokens(7000+Math.floor(Math.random()*4000));
+}
+
+/* ─── paper scroll + scan line ─── */
+const PAPER_SECTIONS = [
+  {id:'p-abs',   label:'abstract',        topFrac:0.035},
+  {id:'p-sec1',  label:'introduction',    topFrac:0.12},
+  {id:'p-sec3',  label:'gaussian repr.',  topFrac:0.25},
+  {id:'p-sec31', label:'rasterization',   topFrac:0.42},
+  {id:'p-sec32', label:'optimization',    topFrac:0.58},
+  {id:'p-sec33', label:'density control', topFrac:0.72},
+  {id:'p-sec4',  label:'implementation',  topFrac:0.88},
+];
+let scrollY=0;
+function scrollPaperToSection(sid){
+  const scroll=$('paperScroll');
+  const sec=$(sid);
+  if(!sec)return;
+  const wrap=scroll.parentElement; // .paper
+  const targetY=Math.max(0, sec.offsetTop - 24);
+  scroll.style.transform=`translateY(${-targetY}px)`;
+}
+function showScan(sid){
+  const sec=$(sid);
+  if(!sec)return;
+  const paper=document.querySelector('.paper');
+  const rect=sec.getBoundingClientRect();
+  const pRect=paper.getBoundingClientRect();
+  const scanTop=Math.max(20, rect.top-pRect.top-4);
+  const scan=$('scanLine');
+  scan.style.top=scanTop+'px';
+  scan.classList.add('on');
+}
+let pageNo=1;
+function setPage(n,total=14){
+  pageNo=n;
+  $('pageNo').textContent=`${n} / ${total}`;
+}
+function setProgress(pct){$('genProgress').style.setProperty('--p',pct+'%')}
+
+/* ─── code editor ─── */
+const codeEl=$('code'), gutterEl=$('gutter');
+let lineCount=0;
+function clearCode(){
+  codeEl.innerHTML='';gutterEl.innerHTML='';lineCount=0;
+  $('lineCount').textContent='0';
+}
+function colorize(line){
+  return line
+    .replace(/(#[^\n]*)/g,'<span class="c">$1</span>')
+    .replace(/("[^"]*"|'[^']*')/g,'<span class="s">$1</span>')
+    .replace(/\b(import|from|class|def|return|self|if|else|elif|for|in|with|as|None|True|False|and|or|not|lambda|yield|pass|raise|try|except|finally|assert|global|nonlocal|super|type)\b/g,
+      m=>m==='self'?`<span class="self">${m}</span>`:`<span class="k">${m}</span>`)
+    .replace(/(@[\w.]+)/g,'<span class="dec">$1</span>')
+    .replace(/\b(\d+\.?\d*(?:e-?\d+)?)\b/g,'<span class="n">$1</span>');
+}
+async function typeLine(line,opts={}){
+  const wrap=document.createElement('span');
+  wrap.className='code-line';
+  codeEl.appendChild(wrap);
+  lineCount++;
+  const g=document.createElement('span');
+  g.textContent=lineCount;
+  gutterEl.appendChild(g);
+  $('lineCount').textContent=lineCount;
+  const speed=opts.speed||6;
+  const total=line.length;
+  const step=Math.max(1,Math.floor(total/12));
+  for(let i=0;i<total;i+=step){
+    wrap.innerHTML=colorize(line.slice(0,i))+'<span class="cursor"></span>';
+    await sleep(speed);
+  }
+  wrap.innerHTML=colorize(line)+'\n';
+  const body=codeEl.parentElement;
+  body.scrollTop=body.scrollHeight;
+  bumpTokens(800+Math.floor(line.length*16)+Math.floor(Math.random()*300));
+}
+async function typeBlock(lines,opts={}){
+  for(const l of lines) await typeLine(l,opts);
+}
+function switchTab(file){
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.classList.toggle('active',t.dataset.file===file);
+  });
+  const m={model:'model.py',losses:'losses.py',rendering:'rendering.py',configs:'configs.py'};
+  $('codeFileName').textContent=m[file];
+  $('curFile').textContent=m[file];
+}
+function markTabDone(file){
+  document.querySelectorAll('.tab').forEach(t=>{if(t.dataset.file===file) t.classList.add('done')});
+}
+function markTabRefixed(file){
+  document.querySelectorAll('.tab').forEach(t=>{if(t.dataset.file===file){t.classList.remove('done');t.classList.add('refixed','active')}});
+}
+
+/* ─── code blobs ─── */
+const MODEL_CODE=[
+'"""gs_template 3DGS baseline — generated by Splatify from arXiv:2308.04079."""',
+'from dataclasses import dataclass, field',
+'import torch',
+'from torch.nn import Parameter',
+'from nerfstudio.models.splatfacto import SplatfactoModelConfig',
+'from gs_template.model import GSTemplateModel',
+'',
+'',
+'@dataclass',
+'class GSBaselineConfig(SplatfactoModelConfig):',
+'    _target: type = field(default_factory=lambda: GSBaselineModel)',
+'    sh_degree: int = 3',
+'    lambda_ssim: float = 0.2       # eq. (4)',
+'    densify_from: int = 500',
+'    densify_until: int = 15000',
+'    opacity_reset_interval: int = 3000',
+'    grad_threshold: float = 2e-4',
+'',
+'',
+'class GSBaselineModel(GSTemplateModel):',
+'    config: GSBaselineConfig',
+'',
+'    def populate_modules(self) -> None:',
+'        super().populate_modules()',
+'        # per-Gaussian: means, quats, scales, opacities, SH (from template)',
+'',
+'    def split_gaussians(self, mask, n_samps=2):',
+'        # §3.3: split large+high-grad into n_samps with s ← s/1.6',
+'        return super().split_gaussians(mask, n_samps)',
+];
+
+const LOSSES_CODE=[
+'"""photometric loss — eq. (4) from Kerbl et al."""',
+'import torch',
+'from gs_template.losses import l1_loss, ssim_loss',
+'',
+'',
+'def compute_custom_losses(self, outputs, batch, metrics_dict=None):',
+'    pred = outputs["rgb"]',
+'    gt   = batch["image"].to(pred.device)',
+'    lam  = self.config.lambda_ssim',
+'    l1   = l1_loss(pred, gt)',
+'    dssim = 1.0 - ssim_loss(pred, gt)',
+'    return {"rgb_loss": (1.0 - lam) * l1 + lam * dssim}',
+];
+
+const RENDERING_CODE=[
+'"""tile-based α-blending — eq. (3)."""',
+'from gs_template.rendering import (',
+'    prepare_camera, gather_base_params,',
+'    rasterize_gaussians, assemble_outputs,',
+')',
+'',
+'',
+'def render_gaussians(model, camera):',
+'    # C(p) = Σ αᵢ Tᵢ cᵢ(d)',
+'    cam, crop = prepare_camera(model, camera)',
+'    if cam is None: return crop',
+'    means, quats, scales, op, cols = gather_base_params(model, crop)',
+'    render, alpha, info = rasterize_gaussians(',
+'        model, means, quats, scales, op, cols,',
+'        cam["viewmat"], cam["K"], cam["W"], cam["H"])',
+'    return assemble_outputs(model, render, alpha, info, cam)',
+];
+
+const CONFIGS_CODE=[
+'"""nerfstudio method registration."""',
+'from nerfstudio.plugins.types import MethodSpecification',
+'from nerfstudio.engine.trainer import TrainerConfig',
+'from nerfstudio.configs.base_config import ViewerConfig',
+'from nerfstudio.pipelines.base_pipeline import VanillaPipelineConfig',
+'from .model import GSBaselineConfig',
+'',
+'gs_baseline = MethodSpecification(',
+'    config=TrainerConfig(',
+'        method_name="gs-baseline",',
+'        max_num_iterations=30000,',
+'        pipeline=VanillaPipelineConfig(model=GSBaselineConfig()),',
+'        viewer=ViewerConfig(quit_on_train_completion=True),',
+'    ),',
+'    description="3D Gaussian Splatting (Kerbl 2023) — generated by Splatify.",',
+')',
+];
+
+const MODEL_CODE_FIXED=[
+'"""gs_template 3DGS baseline — v2: fixed after visual analysis of preview frames."""',
+'from dataclasses import dataclass, field',
+'import torch',
+'from torch.nn import Parameter',
+'from nerfstudio.models.splatfacto import SplatfactoModelConfig',
+'from gs_template.model import GSTemplateModel',
+'from gs_template.losses import opacity_entropy',
+'',
+'',
+'@dataclass',
+'class GSBaselineConfig(SplatfactoModelConfig):',
+'    _target: type = field(default_factory=lambda: GSBaselineModel)',
+'    sh_degree: int = 3',
+'    lambda_ssim: float = 0.2',
+'    densify_from: int = 500',
+'    densify_until: int = 15000',
+'    opacity_reset_interval: int = 7000   # ↑ from 3000 — fix: preserve detail',
+'    grad_threshold: float = 2e-4',
+'    opacity_entropy_w: float = 0.01      # fix: kill floaters',
+'    max_scale_frac: float = 0.06         # fix: prune over-opaque gaussians',
+'',
+'',
+'class GSBaselineModel(GSTemplateModel):',
+'    config: GSBaselineConfig',
+'',
+'    def populate_modules(self) -> None:',
+'        super().populate_modules()',
+'',
+'    def compute_custom_losses(self, outputs, batch, metrics_dict=None):',
+'        # fix: opacity entropy regularizer attacks low-density floaters',
+'        op = self.gauss_params["opacities"].sigmoid()',
+'        ent = opacity_entropy(op) * self.config.opacity_entropy_w',
+'        return {"opacity_entropy": ent}',
+'',
+'    def split_gaussians(self, mask, n_samps=2):',
+'        return super().split_gaussians(mask, n_samps)',
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   ACT 1 — READ / PLAN / CODE / RENDER / FIX
+   ═══════════════════════════════════════════════════════════════ */
+async function act1(){
+  // 1. PARSE
+  setStep('parse','active');
+  setStreamRate(2400);
+  setBrain('Parsing PDF with MinerU','gaussian_splatting_2308.04079.pdf · 14 pages');
+  addThought('think','Loading <b>gaussian_splatting_2308.04079.pdf</b> via <b>MinerU</b> → markdown.');
+  await sleep(900);
+  addThought('think','Extracted <b>14 pages</b>, <b>19 equations</b>, 8 figures, 52 references.');
+  setProgress(5);
+  await sleep(500);
+  setStepDone('parse');
+
+  // 2. READ (scan through sections)
+  setStep('read','active');
+  setStreamRate(8500);
+  setBrain('Reading paper top → bottom','scanning sections');
+
+  const readStops=[
+    {sid:'p-abs',   page:1, brain:'Parsing abstract',               thought:['read','<b>3 contributions</b>: anisotropic Gaussians, interleaved optimization, tile rasterizer.'], tok:['3D anisotropic G','arch','✦']},
+    {sid:'p-sec1',  page:2, brain:'Reading introduction',           thought:['think','Explicit scene repr. — avoids NeRF MLP bottleneck. Maps to <code>GSTemplateModel</code>.']},
+    {sid:'p-sec3',  page:3, brain:'Gaussian representation',        thought:['read','Each Gaussian: <code>μ, q, s, α, SH</code>. Σ decomposed as <code>R S Sᵀ Rᵀ</code>.'], tok:['Σ = R S Sᵀ Rᵀ','eq','Σ']},
+    {sid:'p-sec31', page:5, brain:'Tile rasterization',             thought:['think','16×16 tile sort + α-composite = <code>gsplat.rasterize_gaussians</code>.'], tok:['tile-based α-blend','arch','▦']},
+    {sid:'p-sec32', page:6, brain:'Reading loss function',          thought:['read','Loss = <code>(1-λ)·L1 + λ·L_DSSIM</code>, λ=<b>0.2</b>. Adam + exp decay.'], tok:['L₁ + λ·L_DSSIM','loss','ℒ']},
+    {sid:'p-sec33', page:8, brain:'Adaptive density control',       thought:['plan','Every 100 iters: clone small+high-grad · split large+high-grad · prune low-α.'], tok:['split_gaussians','arch','✂']},
+    {sid:'p-sec4',  page:11,brain:'Implementation details',         thought:['read','SH deg 3 · densify 500→15k · opacity reset @ 3000 · grad thresh <b>2e-4</b>.'], tok:['30k iters','param','⏱']},
+  ];
+  let pBase=5;
+  for(const s of readStops){
+    setPage(s.page);
+    scrollPaperToSection(s.sid);
+    showScan(s.sid);
+    setBrain(s.brain);
+    await sleep(450);
+    addThought(s.thought[0],s.thought[1]);
+    if(s.tok) addToken(s.tok[0],s.tok[1],s.tok[2]);
+    pBase+=3.5;
+    setProgress(pBase);
+    await sleep(900);
+  }
+  setStepDone('read');
+
+  // 3. CITATIONS
+  setStep('citations','active');
+  setStreamRate(11000);
+  setBrain('Recovering citations','fetching referenced repos & APIs');
+  addThought('cite','Found references: <b>NeRF</b>, <b>Instant-NGP</b>, <b>Mip-NeRF 360</b>, <b>EWA Splatting</b>.');
+  addToken('gsplat≥1.4','cite','⌬');
+  await sleep(500);
+  addThought('cite','Resolving <code>gsplat.rasterize_gaussians</code> signature (v1.4).');
+  addToken('SplatfactoModel','cite','◇');
+  await sleep(500);
+  addThought('cite','Mapping to <code>gs_template.rendering.rasterize_gaussians</code> helper.');
+  setProgress(32);
+  await sleep(400);
+  setStepDone('citations');
+
+  // 4. PLAN
+  setStep('plan','active');
+  setStreamRate(14000);
+  setBrain('Building DAG','mapping paper → gs_template extension points');
+  addThought('plan','DAG: <b>model</b> → <b>losses</b> → <b>rendering</b> → <b>configs</b>.');
+  addToken('tier-3 complexity','arch','★');
+  await sleep(500);
+  addThought('plan','Complexity <b>Tier 3</b>: custom loss + rendering + densification. 8 files.');
+  addToken('split_gaussians','arch','✂');
+  addToken('compute_custom_losses','loss','ℒ');
+  setProgress(42);
+  await sleep(500);
+  setStepDone('plan');
+
+  // 5. CODE (stream 4 files)
+  setStep('code','active');
+  setStreamRate(26000);
+
+  setBrain('Coder writing model.py','streaming tokens');
+  addThought('write','Writing <b>model.py</b> — <code>GSBaselineModel</code> + config.');
+  switchTab('model'); clearCode();
+  await typeBlock(MODEL_CODE,{speed:5});
+  markTabDone('model');
+  setProgress(58);
+  await sleep(300);
+
+  setBrain('Coder writing losses.py','implementing eq. (4)');
+  addThought('write','Writing <b>losses.py</b> — L1 + D-SSIM blend.');
+  switchTab('losses'); clearCode();
+  await typeBlock(LOSSES_CODE,{speed:5});
+  markTabDone('losses');
+  setProgress(66);
+  await sleep(300);
+
+  setBrain('Coder writing rendering.py','tile raster wrapper');
+  addThought('write','Writing <b>rendering.py</b> — 2D projection + α-blending call.');
+  switchTab('rendering'); clearCode();
+  await typeBlock(RENDERING_CODE,{speed:5});
+  markTabDone('rendering');
+  setProgress(74);
+  await sleep(300);
+
+  setBrain('Coder writing configs.py','registering method');
+  addThought('write','Writing <b>configs.py</b> — <code>gs-baseline</code> entry point.');
+  switchTab('configs'); clearCode();
+  await typeBlock(CONFIGS_CODE,{speed:5});
+  markTabDone('configs');
+  setProgress(80);
+  await sleep(350);
+  setStepDone('code');
+
+  // 6. RENDER (4 previews with artifacts)
+  setStep('render','active');
+  setStreamRate(18000);
+  setBrain('Rendering DrJohnson · 4 preview frames','iter 3000 · smoke test');
+  addThought('write','<b>$ pip install -e . && ns-install-cli</b>');
+  await sleep(500);
+  addThought('write','<b>$ ns-train gs-baseline --max-num-iterations 3000</b>');
+  await sleep(500);
+  $('renderOverlay').classList.add('show');
+  await sleep(1200);
+  addThought('think','Rendered <b>4 preview frames</b>. Mean PSNR <b>22.4 dB</b> — below target 27.0.');
+  $('roSub').textContent='inspecting 4 preview frames · PSNR low';
+  await sleep(800);
+  setStepDone('render');
+
+  // 7. FIX (vision analysis → rewrite code → re-render)
+  setStep('fix','active');
+  setStreamRate(30000);
+  setBrain('Inspecting rendered images','vision-model analysis');
+  addThought('fix','Vision pass: <b>floaters</b> in view 0/2, <b>over-opaque specs</b> in view 1, <b>detail loss</b> from 3k opacity reset.');
+  $('roIssues').classList.add('show');
+  await sleep(1800);
+
+  setBrain('Rewriting model.py','applying 3 fixes from visual analysis');
+  addThought('fix','Fix 1: bump <code>opacity_reset_interval</code> 3000 → 7000 (preserve detail).');
+  addThought('fix','Fix 2: add <code>opacity_entropy_w=0.01</code> regularizer (kills floaters).');
+  addThought('fix','Fix 3: <code>max_scale_frac=0.06</code> — prune over-sized Gaussians.');
+
+  $('renderOverlay').classList.remove('show');
+  await sleep(600);
+
+  switchTab('model'); clearCode();
+  markTabRefixed('model');
+  await typeBlock(MODEL_CODE_FIXED,{speed:5});
+  markTabDone('model');
+  setProgress(90);
+  await sleep(400);
+
+  addThought('write','<b>$ ns-train gs-baseline --max-num-iterations 30000</b>');
+  await sleep(500);
+
+  // Re-render: show overlay again with PSNRs rising + fixed filter removed
+  setBrain('Re-rendering DrJohnson','final pass · 30k iters · all views');
+  $('roSub').textContent='fix applied · re-rendering at 30k';
+  $('roMeta').innerHTML='iter 30000 · PSNR <span class="v g">27.1</span>';
+  $('roDataset').textContent='DrJohnson';
+  $('roIssues').classList.remove('show');
+  $('renderOverlay').classList.add('show');
+  await sleep(700);
+  $('roGrid').classList.add('fixed');
+  // swap PSNR values on thumbs (low → high)
+  document.querySelectorAll('#roGrid .psnr').forEach(el=>{
+    el.textContent=el.dataset.high;
+  });
+  await sleep(1400);
+
+  addThought('think','PSNR <b>27.1 dB</b> · target 27.0 cleared · render quality verified.');
+  setProgress(95);
+  setStepDone('fix');
+
+  // Act 1 done card
+  $('act1Done').classList.add('show');
+  await sleep(1800);
+  // Hide overlay + done card before transitioning
+  $('act1Done').classList.remove('show');
+  $('renderOverlay').classList.remove('show');
+  await sleep(500);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   USER PROMPT TRANSITION
+   ═══════════════════════════════════════════════════════════════ */
+async function typeText(el,text,cps=36){
+  el.innerHTML='';
+  const caret=document.createElement('span');caret.className='chat-caret';
+  el.appendChild(caret);
+  for(let i=0;i<text.length;i++){
+    const ch=document.createTextNode(text[i]);
+    caret.before(ch);
+    await sleep(1000/cps+(Math.random()*30-15));
+  }
+  caret.remove();
+}
+async function promptTransition(){
+  $('mainPanes').classList.add('dim');
+  $('promptOverlay').classList.add('show');
+  await sleep(250);
+  $('crUser').classList.add('on');
+  await sleep(400);
+  setBrain('User prompt received','spawning evolutionary discovery pipeline');
+  await typeText($('userTxt'),'The baseline works but struggles on volumetric emission scenes like nebulae. Create a new 3DGS pipeline for nebulae — discover something that beats it.',42);
+  await sleep(600);
+  $('crBot').classList.add('on');
+  $('botTxt').innerHTML=`<span class="typing-dots"><span></span><span></span><span></span></span>`;
+  await sleep(1000);
+  await typeText($('botTxt'),'Spawning 8-agent evolutionary tournament · 3 generations · cross-gen knowledge transfer. Entering Knowledge Discovery Arena...',38);
+  $('botMeta').textContent='splatify orchestrator · entering arena';
+  await sleep(800);
+  $('promptOverlay').classList.remove('show');
+  $('mainPanes').classList.remove('dim');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACT 2 — KNOWLEDGE DISCOVERY ARENA
+   ═══════════════════════════════════════════════════════════════ */
+const STRATS=[
+  {em:'L',name:'Loss Engineering',  col:'#a855f7'},
+  {em:'D',name:'Densification',     col:'#ec4899'},
+  {em:'O',name:'LR & Optimizer',    col:'#22d3ee'},
+  {em:'R',name:'Rendering',         col:'#f59e0b'},
+  {em:'P',name:'New Params',        col:'#10b981'},
+  {em:'G',name:'Regularization',    col:'#6366f1'},
+  {em:'T',name:'Training Schedule', col:'#0ea5e9'},
+  {em:'W',name:'Web-Inspired',      col:'#fb7185'},
+];
+
+const GENS=[
+  {idx:1,base:28.30,isles:[
+    {s:0,final:29.05,log:'+LPIPS @0.05 weight',fate:'survived',r2:29.80,r3:30.12},
+    {s:1,final:28.85,log:'grad-based split threshold',fate:'eliminated'},
+    {s:2,final:27.40,log:'warmup → cosine LR',fate:'eliminated'},
+    {s:3,final:29.22,log:'higher SH degree 3→4',fate:'survived',r2:29.95,r3:30.34},
+    {s:4,final:28.10,log:'raw emission (too aggressive)',fate:'eliminated'},
+    {s:5,final:29.08,log:'opacity entropy λ=0.01',fate:'survived',r2:29.61},
+    {s:6,final:26.80,log:'progressive resolution (destabilized)',fate:'eliminated'},
+    {s:7,final:29.11,log:'Mini-Splatting densify',fate:'survived',r2:29.52},
+  ],winner:3},
+  {idx:2,base:30.34,isles:[
+    {s:0,final:30.58,log:'+LPIPS @0.02 (milder)',fate:'survived',r2:30.82},
+    {s:1,final:30.12,log:'2D gradient renorm split',fate:'eliminated'},
+    {s:2,final:30.78,log:'position warmup + cosine anneal',fate:'survived',r2:31.05,r3:31.18},
+    {s:3,final:29.44,log:'anti-aliased raster (crashed)',fate:'eliminated'},
+    {s:4,final:30.99,log:'per-Gaussian emission_rgb + gentle prior',fate:'survived',r2:31.28,r3:31.40},
+    {s:5,final:30.44,log:'opacity ceiling 0.95',fate:'survived',r2:30.88},
+    {s:6,final:30.21,log:'delayed SSIM → 7k',fate:'eliminated'},
+    {s:7,final:30.12,log:'GOF geometry filter',fate:'eliminated'},
+  ],winner:4},
+  {idx:3,base:31.40,isles:[
+    {s:0,final:31.52,log:'LPIPS + perceptual SSIM blend',fate:'survived',r2:31.61,r3:31.66},
+    {s:1,final:30.98,log:'radiance-gradient densify',fate:'eliminated'},
+    {s:2,final:31.44,log:'position warmup + cosine anneal',fate:'survived',r2:31.55},
+    {s:3,final:31.30,log:'SH degree 4 (already baseline)',fate:'eliminated'},
+    {s:4,final:31.72,log:'emission + ceiling + multi-scale L1 (synthesis!)',fate:'survived',r2:31.72,r3:31.72},
+    {s:5,final:31.10,log:'scale flatten regularizer',fate:'eliminated'},
+    {s:6,final:31.22,log:'linear physics-loss warmup 0→0.008',fate:'survived',r2:31.32},
+    {s:7,final:31.18,log:'Pixel-GS grad-normalization',fate:'eliminated'},
+  ],winner:4},
+];
+
+const LEDGER_FLOW=[
+  {g:1,t:'worked',  txt:'<span class="tag">G1/L</span>LPIPS @0.05 adds +0.75 dB — keep as reusable component'},
+  {g:1,t:'worked',  txt:'<span class="tag">G1/P</span>SH degree 3 → 4 gives +0.92 dB — promote to base'},
+  {g:1,t:'failed',  txt:'<span class="tag">G1/T</span>Progressive resolution training destabilizes — avoid'},
+  {g:1,t:'failed',  txt:'<span class="tag">G1/P</span>Raw emission param (weight 0.3) fights reconstruction'},
+  {g:2,t:'worked',  txt:'<span class="tag">G2/O</span>Position-only warmup + global cosine — stable +0.84 dB'},
+  {g:2,t:'worked',  txt:'<span class="tag">G2/P</span>Emission WITH gentle prior (λ=0.01) — winning approach'},
+  {g:2,t:'worked',  txt:'<span class="tag">G2/G</span>Opacity ceiling 0.95 — preserves emission semantics'},
+  {g:2,t:'failed',  txt:'<span class="tag">G2/R</span>Anti-aliased rasterizer crashes on gsplat 1.4 — skip'},
+  {g:3,t:'worked',  txt:'<span class="tag">G3/T</span>Linear warmup 0→0.008 on physics losses over 3k steps'},
+  {g:3,t:'synthesis',txt:'<b>SYNTHESIS</b> — combine: emission (G2/P) + ceiling (G2/G) + multi-scale L1'},
+  {g:3,t:'synthesis',txt:'<b>EMERGENT</b> — multi-scale L1 is novel; cooperates with main L1'},
+  {g:3,t:'worked',  txt:'<span class="tag">G3/R</span>LPIPS + perceptual SSIM blend — robust +0.26 dB'},
+  {g:3,t:'synthesis',txt:'<b>★ NAME: NebulaGS</b> — all insights converge into one coherent method'},
+];
+
+function buildIslandCards(){
+  const host=$('islands');host.innerHTML='';
+  STRATS.forEach((s,i)=>{
+    const el=document.createElement('div');el.className='isl';el.id='isl-'+i;
+    el.innerHTML=`
+      <div class="isl-head">
+        <div class="isl-em" style="background:${s.col}">${s.em}</div>
+        <div class="isl-name">${s.name}</div>
+        <div class="isl-id">C${i+1}</div>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:.3rem">
+        <div class="isl-psnr" id="isl-psnr-${i}">—</div>
+        <div style="font-size:.55rem;color:var(--dim);font-family:var(--font-mono)">dB</div>
+      </div>
+      <div class="isl-bar-wrap"><div class="isl-bar" id="isl-bar-${i}" style="width:0"></div></div>
+      <div class="isl-status" id="isl-st-${i}">waiting...</div>`;
+    host.appendChild(el);
+  });
+}
+
+async function revealIslands(gen){
+  const cards=document.querySelectorAll('.isl');
+  cards.forEach(c=>{
+    c.className='isl';
+    c.querySelector('.isl-bar').style.width='0';
+    c.querySelector('.isl-bar').style.background='';
+    c.querySelector('.isl-psnr').textContent='—';
+    c.querySelector('.isl-status').textContent='waiting...';
+    c.querySelector('.isl-status').className='isl-status';
+  });
+  await sleep(100);
+  for(let i=0;i<cards.length;i++){
+    cards[i].classList.add('on','alive');
+    $('isl-st-'+i).textContent='strategy: '+gen.isles[i].log.substring(0,36);
+    await sleep(90);
+  }
+}
+
+let raceAnimRunning=false, raceState=null;
+function raceStart(gen,duration,stepMax,showR=1,selectFate=true,updateSurvivors=null){
+  raceState={
+    gen,duration,stepMax,showR,selectFate,
+    t0:performance.now(),
+    targets:gen.isles.map((isl)=>{
+      if(showR===1) return isl.final;
+      if(showR===2) return isl.r2!==undefined?isl.r2:isl.final;
+      return isl.r3!==undefined?isl.r3:(isl.r2!==undefined?isl.r2:isl.final);
+    }),
+    starts:(function(){
+      if(showR===1) return new Array(8).fill(gen.base);
+      if(showR===2) return gen.isles.map(isl=>isl.final);
+      return gen.isles.map(isl=>isl.r2!==undefined?isl.r2:isl.final);
+    })(),
+    survivors:updateSurvivors,
+    finalized:false,
+  };
+  raceAnimRunning=true;raceTick();
+}
+function raceTick(){
+  if(!raceAnimRunning||!raceState)return;
+  const {gen,duration,stepMax,t0,targets,starts,selectFate,survivors,showR}=raceState;
+  const now=performance.now();
+  const prog=clamp((now-t0)/duration,0,1);
+  const step=Math.floor(prog*stepMax);
+  $('raceStep').textContent=`step ${fmt(step)} / ${fmt(stepMax)}`;
+  const psnrMin=26,psnrMax=32.5;
+  for(let i=0;i<8;i++){
+    if(survivors&&!survivors.includes(i))continue;
+    const start=starts[i],tgt=targets[i];
+    const easeIn=1-Math.pow(1-prog,1.8);
+    const jitter=.32*Math.sin(now*0.008+i*1.37)+.2*Math.cos(now*0.011+i*0.83);
+    const v=lerp(start,tgt,easeIn)+jitter*(1-prog);
+    $('isl-psnr-'+i).textContent=v.toFixed(2);
+    const barPct=clamp((v-psnrMin)/(psnrMax-psnrMin),0,1)*100;
+    $('isl-bar-'+i).style.width=barPct+'%';
+    const card=$('isl-'+i);
+    if(!card.classList.contains('training')){card.classList.add('training')}
+    $('isl-st-'+i).textContent=`training step ${fmt(step)}`;
+  }
+  drawRace();
+  if(prog<1) requestAnimationFrame(raceTick);
+  else{
+    raceAnimRunning=false;raceState.finalized=true;
+    if(selectFate) finalizeRound(gen,showR,survivors);
+  }
+}
+function finalizeRound(gen,showR,survivors){
+  const bestIdx=gen.winner;
+  let srv;
+  if(showR===1) srv=gen.isles.map((isl,i)=>isl.r2!==undefined?i:null).filter(x=>x!==null);
+  else if(showR===2) srv=gen.isles.map((isl,i)=>isl.r3!==undefined?i:null).filter(x=>x!==null);
+  else srv=[bestIdx];
+  for(let i=0;i<8;i++){
+    const card=$('isl-'+i);
+    const isTracked=survivors?survivors.includes(i):true;
+    if(!isTracked)continue;
+    card.classList.remove('training','alive');
+    if(srv.includes(i)){
+      card.classList.add(showR===3&&i===bestIdx?'winner':'survived');
+      $('isl-st-'+i).textContent=showR===3&&i===bestIdx?'★ CHAMPION':'survived';
+      if(showR===3&&i===bestIdx) $('isl-st-'+i).classList.add('win');
+    } else {
+      card.classList.add('eliminated');
+      $('isl-st-'+i).textContent='eliminated';
+    }
+  }
+  let bestPSNR;
+  if(showR===3) bestPSNR=gen.isles[bestIdx].r3;
+  else if(showR===2) bestPSNR=Math.max(...srv.map(i=>gen.isles[i].r2??gen.isles[i].final));
+  else bestPSNR=Math.max(...srv.map(i=>gen.isles[i].r2??gen.isles[i].final));
+  $('asBest').textContent=bestPSNR.toFixed(2)+' dB';
+}
+function drawRace(){
+  const cv=$('cRace');
+  const dpr=window.devicePixelRatio||1;
+  const W=cv.offsetWidth,H=cv.offsetHeight;
+  if(cv.width!==W*dpr){cv.width=W*dpr;cv.height=H*dpr}
+  const c=cv.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,W,H);
+  const p={t:12,r:14,b:26,l:42},gw=W-p.l-p.r,gh=H-p.t-p.b;
+  const psnrMin=26,psnrMax=32.5;
+  c.strokeStyle='rgba(138,150,184,.18)';c.lineWidth=.5;
+  for(let i=0;i<=6;i++){
+    const y=p.t+gh*i/6;c.beginPath();c.moveTo(p.l,y);c.lineTo(p.l+gw,y);c.stroke();
+    c.fillStyle='#8a96b8';c.font='9px system-ui';c.textAlign='right';
+    c.fillText((psnrMax-(psnrMax-psnrMin)*i/6).toFixed(1),p.l-4,y+3);
+  }
+  const {gen}=raceState;
+  const blY=p.t+gh*(1-(gen.base-psnrMin)/(psnrMax-psnrMin));
+  c.strokeStyle='rgba(245,158,11,.55)';c.setLineDash([4,3]);c.lineWidth=1;
+  c.beginPath();c.moveTo(p.l,blY);c.lineTo(p.l+gw,blY);c.stroke();c.setLineDash([]);
+  c.fillStyle='#f59e0b';c.font='9px monospace';c.textAlign='right';
+  c.fillText(`base ${gen.base.toFixed(1)}`,p.l+gw-4,blY-4);
+  const targets=raceState.targets,starts=raceState.starts;
+  const now=performance.now();
+  const prog=clamp((now-raceState.t0)/raceState.duration,0,1);
+  for(let i=0;i<8;i++){
+    if(raceState.survivors&&!raceState.survivors.includes(i))continue;
+    c.strokeStyle=STRATS[i].col;c.lineWidth=1.6;c.globalAlpha=.92;
+    c.beginPath();
+    for(let tt=0;tt<=60;tt++){
+      const localT=tt/60*prog;
+      const easeIn=1-Math.pow(1-localT,1.8);
+      const jitter=.2*Math.sin(now*0.008+i*1.37+tt*0.3)+.12*Math.cos(now*0.011+i*0.83+tt*0.5);
+      const v=lerp(starts[i],targets[i],easeIn)+jitter*(1-localT);
+      const x=p.l+gw*localT;
+      const y=p.t+gh*(1-(v-psnrMin)/(psnrMax-psnrMin));
+      tt===0?c.moveTo(x,y):c.lineTo(x,y);
+    }
+    c.stroke();c.globalAlpha=1;
+    const localT=prog;
+    const easeIn=1-Math.pow(1-localT,1.8);
+    const jitter=.2*Math.sin(now*0.008+i*1.37)+.12*Math.cos(now*0.011+i*0.83);
+    const v=lerp(starts[i],targets[i],easeIn)+jitter*(1-localT);
+    const x=p.l+gw*localT;
+    const y=p.t+gh*(1-(v-psnrMin)/(psnrMax-psnrMin));
+    c.beginPath();c.arc(x,y,3,0,Math.PI*2);c.fillStyle=STRATS[i].col;c.fill();
+  }
+  c.fillStyle='#8a96b8';c.font='9px system-ui';c.textAlign='center';
+  c.fillText('iters',p.l+gw/2,H-6);
+}
+async function addLedger(entry){
+  const host=$('ledgerBody');
+  const d=document.createElement('div');
+  d.className='ledger-entry '+entry.t;
+  d.innerHTML=`<span class="ledger-gen">G${entry.g}</span><span class="ledger-txt">${entry.txt}</span>`;
+  host.appendChild(d);host.scrollTop=host.scrollHeight;
+  await sleep(80);d.classList.add('on');
+}
+
+async function act2(){
+  setStep('arena','active');
+  $('arenaOverlay').classList.add('show');
+  buildIslandCards();
+  await sleep(250);
+
+  // GEN 1
+  $('genBadge').textContent='GEN 1';
+  $('roundBadge').textContent='R1 · 2k iters · 8 → 4';
+  await revealIslands(GENS[0]);
+  await sleep(200);
+  await addLedger({g:1,t:'',txt:'<b>Generation 1 started</b> — 8 islands, each with a different strategy, training in parallel'});
+  raceStart(GENS[0],8500,2000,1,true,null);
+  const gen1Entries=LEDGER_FLOW.filter(e=>e.g===1);
+  for(let i=0;i<gen1Entries.length;i++){await sleep(1500);await addLedger(gen1Entries[i])}
+  while(raceAnimRunning)await sleep(100);
+  await sleep(400);
+  $('roundBadge').textContent='R2 · 7k iters · 4 → 2';
+  const r1S=GENS[0].isles.map((isl,i)=>isl.fate==='survived'?i:-1).filter(x=>x>=0);
+  r1S.forEach(i=>{$('isl-'+i).classList.remove('survived');$('isl-'+i).classList.add('training','alive');$('isl-st-'+i).textContent='training at 7k...'});
+  raceStart(GENS[0],3000,7000,2,true,r1S);
+  while(raceAnimRunning)await sleep(100);
+  await sleep(300);
+  $('roundBadge').textContent='R3 · 30k iters · 2 → 1';
+  const r2S=GENS[0].isles.map((isl,i)=>isl.r3!==undefined?i:-1).filter(x=>x>=0);
+  r2S.forEach(i=>{$('isl-'+i).classList.remove('survived');$('isl-'+i).classList.add('training','alive');$('isl-st-'+i).textContent='training at 30k...'});
+  raceStart(GENS[0],2500,30000,3,true,r2S);
+  while(raceAnimRunning)await sleep(100);
+  await sleep(300);
+
+  // GEN 2
+  setStep('evolve','active');
+  $('genBadge').textContent='GEN 2';
+  $('roundBadge').textContent='R1 · 2k · knowledge-seeded';
+  $('asBaseline').textContent='30.34 dB';
+  await revealIslands(GENS[1]);
+  await addLedger({g:2,t:'',txt:'<b>Generation 2 started</b> — winners\' learnings feed next island prompts'});
+  await sleep(200);
+  raceStart(GENS[1],6500,2000,1,true,null);
+  const gen2Entries=LEDGER_FLOW.filter(e=>e.g===2);
+  for(let i=0;i<gen2Entries.length;i++){await sleep(1300);await addLedger(gen2Entries[i])}
+  while(raceAnimRunning)await sleep(100);
+  await sleep(250);
+  $('roundBadge').textContent='R2 · 7k iters';
+  const g2r1=GENS[1].isles.map((isl,i)=>isl.fate==='survived'?i:-1).filter(x=>x>=0);
+  g2r1.forEach(i=>{$('isl-'+i).classList.remove('survived');$('isl-'+i).classList.add('training','alive')});
+  raceStart(GENS[1],2200,7000,2,true,g2r1);
+  while(raceAnimRunning)await sleep(100);
+  await sleep(220);
+  $('roundBadge').textContent='R3 · 30k iters';
+  const g2r2=GENS[1].isles.map((isl,i)=>isl.r3!==undefined?i:-1).filter(x=>x>=0);
+  g2r2.forEach(i=>{$('isl-'+i).classList.remove('survived');$('isl-'+i).classList.add('training','alive')});
+  raceStart(GENS[1],2000,30000,3,true,g2r2);
+  while(raceAnimRunning)await sleep(100);
+  await sleep(300);
+
+  // GEN 3
+  $('genBadge').textContent='GEN 3';
+  $('roundBadge').textContent='R1 · 2k · synthesis phase';
+  $('asBaseline').textContent='31.40 dB';
+  await revealIslands(GENS[2]);
+  await addLedger({g:3,t:'',txt:'<b>Generation 3 started</b> — agents read full 17-entry knowledge ledger before coding'});
+  await sleep(200);
+  raceStart(GENS[2],6500,2000,1,true,null);
+  const gen3Entries=LEDGER_FLOW.filter(e=>e.g===3);
+  for(let i=0;i<gen3Entries.length;i++){await sleep(1150);await addLedger(gen3Entries[i])}
+  while(raceAnimRunning)await sleep(100);
+  await sleep(250);
+  $('roundBadge').textContent='R2 · 7k iters';
+  const g3r1=GENS[2].isles.map((isl,i)=>isl.fate==='survived'?i:-1).filter(x=>x>=0);
+  g3r1.forEach(i=>{$('isl-'+i).classList.remove('survived');$('isl-'+i).classList.add('training','alive')});
+  raceStart(GENS[2],1800,7000,2,true,g3r1);
+  while(raceAnimRunning)await sleep(100);
+  await sleep(220);
+  $('roundBadge').textContent='R3 · 30k iters · CHAMPIONSHIP';
+  const g3r2=GENS[2].isles.map((isl,i)=>isl.r3!==undefined?i:-1).filter(x=>x>=0);
+  g3r2.forEach(i=>{$('isl-'+i).classList.remove('survived');$('isl-'+i).classList.add('training','alive')});
+  raceStart(GENS[2],2000,30000,3,true,g3r2);
+  while(raceAnimRunning)await sleep(100);
+  setStepDone('arena');setStepDone('evolve');
+  setProgress(97);
+  await sleep(500);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DISCOVERY + RESULT
+   ═══════════════════════════════════════════════════════════════ */
+async function discovery(){
+  setStep('champion','active');
+  const modal=$('discoveryModal');
+  modal.classList.add('on');
+  await sleep(1200);
+  const techs=modal.querySelectorAll('.dtech');
+  for(const t of techs){await sleep(200);t.classList.add('on')}
+  await sleep(3000);
+  modal.classList.remove('on');
+  setStepDone('champion');
+}
+
+async function finalResult(){
+  setStep('result','active');
+  $('arenaOverlay').classList.remove('show');
+  $('resultOverlay').classList.add('show');
+  const vid=$('resultVid');
+  vid.play().catch(()=>{});
+  vid.addEventListener('canplay',()=>$('vidLoad').classList.add('hide'),{once:true});
+  setTimeout(()=>$('vidLoad').classList.add('hide'),1500);
+  setTimeout(()=>$('fcard').classList.add('on'),800);
+  await sleep(1200);
+  const fl=$('ffiles');
+  const files=[
+    ['__init__.py','c'],['model.py','d'],['losses.py','d'],['rendering.py','d'],
+    ['configs.py','c'],['datamanager.py','c'],['pyproject.toml','c'],
+    ['README.md','c'],['improvement_summary.txt','d'],
+  ];
+  for(const [f,m] of files){
+    const d=document.createElement('div');d.className='ff';
+    d.innerHTML=`<span class="ff-${m}">${m==='d'?'★':'✓'}</span>${f}`;
+    fl.appendChild(d);
+    await sleep(80);
+  }
+  setProgress(100);
+  setStepDone('result');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MAIN SEQUENCE
+   ═══════════════════════════════════════════════════════════════ */
+async function start(){
+  startTimer();
+  startTokenStream();
+
+  await act1();                     // ~50s
+  await promptTransition();         // ~8s
+  await act2();                     // ~45s
+  await discovery();                // ~5s
+  await finalResult();              // ~3s setup + video loop
+  await sleep(14000);               // let video play
+
+  setBrain('All stages complete','NebulaGS · 31.72 dB · +3.42 vs baseline');
+  setStreamRate(0);
+  if(tokCount<3_184_502) bumpTokens(3_184_502-tokCount);
+  stopTokenStream();
+  stopTimer();
+  $('replay').classList.add('show');
+}
+
+/* Intro → start */
+setTimeout(()=>{
+  $('intro').classList.add('hide');
+  $('app').classList.add('show');
+  setTimeout(start,600);
+},2400);
+
+$('replay').addEventListener('click',()=>location.reload());
+</script>
+</body>
+</html>
