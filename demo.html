@@ -863,7 +863,7 @@ main.dim{opacity:.15;pointer-events:none;filter:blur(2px)}
           <div class="fstat"><span class="fl">Islands Trained</span><span class="fv">24 (8 × 3 gens)</span></div>
           <div class="fstat"><span class="fl">Knowledge Entries</span><span class="fv gold">17</span></div>
           <div class="fstat"><span class="fl">Debug Fixes</span><span class="fv">3 cycles</span></div>
-          <div class="fstat"><span class="fl">Tokens</span><span class="fv">3,184,502</span></div>
+          <div class="fstat"><span class="fl">Tokens</span><span class="fv">2,987,421</span></div>
           <div class="fstat"><span class="fl">Cost</span><span class="fv g">$12.84</span></div>
           <div class="fstat"><span class="fl">Duration</span><span class="fv">47m 12s</span></div>
         </div>
@@ -948,6 +948,8 @@ function setBrain(text, sub){
 
 /* ─── tokens ─── */
 let tokCount=0;
+const MAX_TOKENS=3_000_000;
+const TOK_SCALE=0.11;  // scales all bumps so natural growth lands ~2.9M by end-of-demo
 function renderTokCount(){
   const n=tokCount;let s;
   if(n>=1_000_000) s=(n/1_000_000).toFixed(2)+'M';
@@ -955,7 +957,10 @@ function renderTokCount(){
   else s=String(n);
   $('tokCount').textContent=s;
 }
-function bumpTokens(n){tokCount+=n;renderTokCount()}
+function bumpTokens(n){
+  tokCount=Math.min(tokCount+Math.round(n*TOK_SCALE),MAX_TOKENS);
+  renderTokCount();
+}
 
 let streamTimer=null, streamRate=0;
 function setStreamRate(r){streamRate=r}
@@ -1794,7 +1799,7 @@ async function start(){
 
   setBrain('All stages complete','NebulaGS · 31.72 dB · +3.42 vs baseline');
   setStreamRate(0);
-  if(tokCount<3_184_502) bumpTokens(3_184_502-tokCount);
+  if(tokCount<2_987_421){tokCount=2_987_421;renderTokCount()}
   stopTokenStream();
   stopTimer();
   $('replay').classList.add('show');
