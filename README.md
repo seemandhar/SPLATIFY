@@ -10,6 +10,7 @@
 [![Paper PDF](https://img.shields.io/badge/%F0%9F%93%84-Paper%20PDF-ef4444?style=for-the-badge)](https://arxiv.org/pdf/2610.09116)
 [![Project Page](https://img.shields.io/badge/%F0%9F%8C%90-Project%20Page-6d28d9?style=for-the-badge)](https://seemandhar.github.io/splatify/)
 [![Interactive Demo](https://img.shields.io/badge/%E2%96%B6%20Live-Interactive%20Demo-22c55e?style=for-the-badge)](https://seemandhar.github.io/splatify/demo.html)
+[![Video](https://img.shields.io/badge/%F0%9F%8E%AC-Demo%20Video-ff0000?style=for-the-badge)](https://seemandhar.github.io/splatify/#demo)
 [![Sibling: NERFIFY](https://img.shields.io/badge/%F0%9F%94%A5-NERFIFY%20(CVPR%2026)-ff6b35?style=for-the-badge)](https://github.com/seemandhar/nerfify-code)
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
@@ -30,6 +31,8 @@
 > 🚀 **3DGS papers → trainable gsplat / nerfstudio plugins, in minutes instead of weeks — then let agents improve on them.**
 
 ## Demo
+
+🎬 **[Demo video](https://seemandhar.github.io/splatify/#demo)** ([mp4](static/videos/splatify_demo.mp4)): SPLATIFY end to end, from paper to code to discovery.
 
 ▶ **[Interactive demo](https://seemandhar.github.io/splatify/demo.html)** — Act 1: an agent reads the original 3DGS paper and writes the `gs_template` implementation. Act 2: eight island agents compete across generations and discover **NebulaGS**, a physics-informed method for volumetric nebula scenes.
 
