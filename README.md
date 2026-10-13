@@ -8,7 +8,8 @@
 
 [![arXiv](https://img.shields.io/badge/arXiv-2610.09116-b31b1b?style=for-the-badge&logo=arxiv&logoColor=white)](https://arxiv.org/abs/2610.09116)
 [![Paper PDF](https://img.shields.io/badge/%F0%9F%93%84-Paper%20PDF-ef4444?style=for-the-badge)](https://arxiv.org/pdf/2610.09116)
-[![Interactive Demo](https://img.shields.io/badge/%E2%96%B6%20Live-Interactive%20Demo-22c55e?style=for-the-badge)](https://seemandhar.github.io/SPLATIFY/demo.html)
+[![Project Page](https://img.shields.io/badge/%F0%9F%8C%90-Project%20Page-6d28d9?style=for-the-badge)](https://seemandhar.github.io/splatify/)
+[![Interactive Demo](https://img.shields.io/badge/%E2%96%B6%20Live-Interactive%20Demo-22c55e?style=for-the-badge)](https://seemandhar.github.io/splatify/demo.html)
 [![Sibling: NERFIFY](https://img.shields.io/badge/%F0%9F%94%A5-NERFIFY%20(CVPR%2026)-ff6b35?style=for-the-badge)](https://github.com/seemandhar/nerfify-code)
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
@@ -16,7 +17,7 @@
 [![NeRFStudio](https://img.shields.io/badge/NeRFStudio-splatfacto-8b5cf6?style=flat-square)](https://docs.nerf.studio/)
 [![Claude Agent SDK](https://img.shields.io/badge/Claude-Agent%20SDK-d97706?style=flat-square)](https://docs.anthropic.com/en/docs/agents-and-tools/claude-agent-sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-eab308?style=flat-square)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/seemandhar/SPLATIFY?style=flat-square&color=f59e0b)](https://github.com/seemandhar/SPLATIFY/stargazers)
+[![Stars](https://img.shields.io/github/stars/seemandhar/splatify?style=flat-square&color=f59e0b)](https://github.com/seemandhar/splatify/stargazers)
 
 **[Seemandhar Jain](https://seemandhar.github.io/) · Keshav Gupta · [Manmohan Chandraker](https://cseweb.ucsd.edu/~mkchandraker/)**
 
@@ -30,7 +31,7 @@
 
 ## Demo
 
-▶ **[Interactive demo](https://seemandhar.github.io/SPLATIFY/demo.html)** — Act 1: an agent reads the original 3DGS paper and writes the `gs_template` implementation. Act 2: eight island agents compete across generations and discover **NebulaGS**, a physics-informed method for volumetric nebula scenes.
+▶ **[Interactive demo](https://seemandhar.github.io/splatify/demo.html)** — Act 1: an agent reads the original 3DGS paper and writes the `gs_template` implementation. Act 2: eight island agents compete across generations and discover **NebulaGS**, a physics-informed method for volumetric nebula scenes.
 
 <p align="center">
   <img src="nebula-assets/frames/frame_0020.png" width="24%">
@@ -93,8 +94,8 @@ By default the Coder and Debugger run on Opus and the other agents on Sonnet (se
 ## Setup
 
 ```bash
-git clone https://github.com/seemandhar/SPLATIFY.git
-cd SPLATIFY
+git clone https://github.com/seemandhar/splatify.git
+cd splatify
 
 # 1. Install the gs_template plugin (33 methods) into your nerfstudio env
 conda activate nerfstudio
@@ -194,9 +195,10 @@ python read_tb.py outputs/garden/fast-gs/<timestamp>/                 # PSNR cur
 ## Project structure
 
 ```
-SPLATIFY/
+splatify/
 ├── README.md
-├── demo.html / nebula.mp4 / nebula-assets/   # Interactive demo (GitHub Pages)
+├── index.html, static/                       # Project page (GitHub Pages)
+├── demo.html / nebula.mp4 / nebula-assets/   # Interactive demo
 └── splatify/
     ├── main.py              # Paper → code CLI (orchestrator)
     ├── web.py               # Flask UI: paper2code, /invent, /discover (SSE streaming)
