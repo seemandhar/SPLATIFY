@@ -1,0 +1,18 @@
+# Core — Claude Agent SDK
+claude-agent-sdk>=0.1
+
+# Web UI
+flask>=3.0
+werkzeug>=3.0
+
+# API alternative (if not using Agent SDK)
+anthropic>=0.30
+
+# Async
+anyio>=4.0
+
+# PDF extraction (parser agent)
+mineru
+
+# PSNR curves
+tensorboard

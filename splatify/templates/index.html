@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Splatify — Claude Multi-Agent Pipeline</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --cyan: #79c0ff;
+    --orange: #f0883e;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--orange), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  header .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+
+  /* ── Layout ── */
+  .container {
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 340px 1fr 420px;
+    gap: 20px;
+  }
+
+  @media (max-width: 1200px) {
+    .container { grid-template-columns: 340px 1fr; }
+    #detail-panel { display: none; }
+  }
+  @media (max-width: 900px) {
+    .container { grid-template-columns: 1fr; }
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-body { padding: 18px; }
+
+  /* ── Form ── */
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  input[type="text"], input[type="number"], select {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 14px;
+    margin-bottom: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--text-dim); opacity: 0.6; }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-label { font-size: 13px; }
+  .toggle-label small { color: var(--text-dim); display: block; }
+
+  /* Toggle switch */
+  .switch {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: var(--border);
+    border-radius: 22px;
+    transition: 0.2s;
+  }
+  .slider::before {
+    content: "";
+    position: absolute;
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background: var(--text);
+    border-radius: 50%;
+    transition: 0.2s;
+  }
+  .switch input:checked + .slider { background: var(--accent); }
+  .switch input:checked + .slider::before { transform: translateX(18px); }
+
+  /* Button */
+  .btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 8px;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--orange), #d2691e);
+    color: white;
+  }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .btn-danger {
+    background: var(--red);
+    color: white;
+    display: none;
+  }
+  .btn-danger:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  /* ── Log Panel ── */
+  #log-panel {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 100px);
+  }
+  #log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 12.5px;
+    line-height: 1.7;
+    min-height: 500px;
+    background: var(--bg);
+  }
+  #log::-webkit-scrollbar { width: 6px; }
+  #log::-webkit-scrollbar-track { background: transparent; }
+  #log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Log entry types */
+  .log-entry { padding: 2px 0; word-break: break-word; }
+  .log-stage {
+    color: var(--green);
+    font-weight: 600;
+    margin-top: 10px;
+    padding: 6px 10px;
+    background: rgba(63, 185, 80, 0.08);
+    border-left: 3px solid var(--green);
+    border-radius: 0 4px 4px 0;
+  }
+  .log-agent {
+    color: var(--cyan);
+    font-weight: 600;
+    margin-top: 8px;
+    padding: 4px 10px;
+    background: rgba(121, 192, 255, 0.06);
+    border-left: 3px solid var(--cyan);
+    border-radius: 0 4px 4px 0;
+  }
+  .log-tool {
+    color: var(--yellow);
+    padding-left: 16px;
+  }
+  .log-tool .tool-name { font-weight: 600; }
+  .log-tool .tool-path { color: var(--text-dim); }
+  .log-thinking {
+    color: var(--purple);
+    padding-left: 16px;
+    font-style: italic;
+    opacity: 0.8;
+  }
+  .log-text {
+    color: var(--text);
+    padding-left: 16px;
+    white-space: pre-wrap;
+  }
+  .log-error {
+    color: var(--red);
+    font-weight: 600;
+    padding: 4px 10px;
+    background: rgba(248, 81, 73, 0.08);
+    border-left: 3px solid var(--red);
+  }
+  .log-progress {
+    color: var(--text-dim);
+    padding-left: 16px;
+    font-size: 11.5px;
+  }
+  .log-done {
+    color: var(--green);
+    font-weight: 600;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: rgba(63, 185, 80, 0.1);
+    border-radius: 6px;
+  }
+  .log-system { color: var(--text-dim); font-size: 11.5px; }
+
+  /* ── Status indicators ── */
+  .status-bar {
+    padding: 10px 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+  .status-dot.running {
+    background: var(--green);
+    animation: pulse 1.5s infinite;
+  }
+  .status-dot.error { background: var(--red); }
+  .status-dot.done { background: var(--accent); }
+
+  .token-stats {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    color: var(--purple);
+    margin-left: 12px;
+    padding: 2px 8px;
+    background: rgba(188, 140, 255, 0.08);
+    border-radius: 4px;
+    border: 1px solid rgba(188, 140, 255, 0.15);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── Files list ── */
+  .files-list {
+    margin-top: 10px;
+    font-size: 12px;
+  }
+  .files-list .file {
+    padding: 4px 10px;
+    color: var(--accent);
+    font-family: monospace;
+  }
+
+  /* ── Eval Results ── */
+  #eval-results-card { display: none; margin-top: 16px; }
+  #eval-results-card.visible { display: block; }
+  .eval-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 11.5px;
+  }
+  .eval-table th {
+    text-align: right;
+    padding: 6px 10px;
+    color: var(--text-dim);
+    font-weight: 500;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+  }
+  .eval-table th:first-child { text-align: left; }
+  .eval-table td {
+    padding: 5px 10px;
+    text-align: right;
+    color: var(--text);
+    border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+  }
+  .eval-table td:first-child {
+    text-align: left;
+    color: var(--cyan);
+    font-weight: 600;
+  }
+  .eval-table tr.eval-avg {
+    border-top: 2px solid var(--border);
+  }
+  .eval-table tr.eval-avg td {
+    font-weight: 600;
+    color: var(--green);
+    padding-top: 8px;
+  }
+  .eval-table tr.eval-avg td:first-child {
+    color: var(--green);
+  }
+
+  /* ── Animated Agent Cards ── */
+  .agent-cards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .agent-card-live {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .agent-card-live.active {
+    border-color: var(--cyan);
+    box-shadow: 0 0 16px rgba(121, 192, 255, 0.15), inset 0 0 20px rgba(121, 192, 255, 0.03);
+  }
+  .agent-card-live.done {
+    border-color: var(--green);
+    box-shadow: 0 0 8px rgba(63, 185, 80, 0.1);
+  }
+  .ac-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+  }
+  .ac-icon {
+    width: 22px; height: 22px;
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+  .agent-card-live.active .ac-icon {
+    background: var(--cyan);
+    border-color: var(--cyan);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(121, 192, 255, 0.4);
+    animation: acPulse 2s infinite;
+  }
+  .agent-card-live.done .ac-icon {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+  }
+  @keyframes acPulse {
+    0%, 100% { box-shadow: 0 0 10px rgba(121, 192, 255, 0.4); }
+    50% { box-shadow: 0 0 20px rgba(121, 192, 255, 0.6); }
+  }
+  .ac-name {
+    font-size: 11.5px;
+    font-weight: 600;
+    flex: 1;
+    color: var(--text-dim);
+  }
+  .agent-card-live.active .ac-name { color: var(--cyan); }
+  .agent-card-live.done .ac-name { color: var(--green); }
+  .ac-badge {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.04);
+    color: var(--text-dim);
+  }
+  .ac-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+  .agent-card-live.active .ac-dot {
+    background: var(--cyan);
+    box-shadow: 0 0 6px var(--cyan);
+    animation: acDotPulse 1.5s infinite;
+  }
+  .agent-card-live.done .ac-dot {
+    background: var(--green);
+    box-shadow: 0 0 4px var(--green);
+  }
+  @keyframes acDotPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  /* Mini terminal */
+  .ac-terminal {
+    max-height: 0;
+    overflow: hidden;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--text-dim);
+    background: rgba(0, 0, 0, 0.15);
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+  }
+  .agent-card-live.active .ac-terminal {
+    max-height: 66px;
+    border-top: 1px solid var(--border);
+  }
+  .ac-terminal::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 12px;
+    background: linear-gradient(transparent, var(--bg));
+    pointer-events: none;
+  }
+  .ac-line {
+    padding: 1px 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    animation: acLineIn 0.2s ease-out;
+  }
+  @keyframes acLineIn {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .ac-line .ac-tool { color: var(--yellow); font-weight: 600; }
+  .ac-line .ac-path { color: var(--text-dim); }
+  .ac-line .ac-think { color: var(--purple); font-style: italic; }
+  .ac-footer {
+    display: none;
+    padding: 3px 10px;
+    font-size: 9px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    color: var(--text-dim);
+    justify-content: space-between;
+    border-top: 1px solid var(--border);
+  }
+  .agent-card-live.active .ac-footer,
+  .agent-card-live.done .ac-footer {
+    display: flex;
+  }
+
+  /* ── Complexity tier badge ── */
+  .tier-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--orange);
+    margin-left: 8px;
+  }
+
+  /* ── Network + Detail Panel ── */
+  #detail-panel {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 100px);
+  }
+  #detail-panel .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* Network Canvas Area */
+  #network-area {
+    position: relative;
+    height: 340px;
+    min-height: 260px;
+    background: #060810;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  #network-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  #network-area .net-grid {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      linear-gradient(rgba(56, 68, 100, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56, 68, 100, 0.06) 1px, transparent 1px);
+    background-size: 30px 30px;
+    pointer-events: none;
+  }
+
+  #detail-tool-name {
+    font-weight: 600;
+    color: var(--yellow);
+    font-size: 12px;
+  }
+  #detail-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    min-height: 180px;
+    background: #0a0e14;
+    color: var(--text-dim);
+  }
+  #detail-content::-webkit-scrollbar { width: 6px; }
+  #detail-content::-webkit-scrollbar-track { background: transparent; }
+  #detail-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .detail-empty {
+    color: var(--text-dim);
+    opacity: 0.5;
+    font-style: italic;
+    padding: 14px;
+  }
+  .term-cmd {
+    padding: 8px 12px;
+    background: rgba(88, 166, 255, 0.06);
+    border-bottom: 1px solid var(--border);
+    color: var(--green);
+    font-weight: 600;
+    word-break: break-all;
+  }
+  .term-cmd .term-prompt {
+    color: var(--cyan);
+    margin-right: 6px;
+    user-select: none;
+  }
+  .term-output {
+    padding: 10px 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #c5c8c6;
+  }
+  .term-label {
+    padding: 6px 12px;
+    color: var(--cyan);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(121, 192, 255, 0.04);
+  }
+  .term-file {
+    padding: 8px 12px;
+    color: var(--accent);
+    border-bottom: 1px solid var(--border);
+    word-break: break-all;
+  }
+  .term-diff-old {
+    color: var(--red);
+    padding: 2px 12px;
+    background: rgba(248, 81, 73, 0.06);
+  }
+  .term-diff-new {
+    color: var(--green);
+    padding: 2px 12px;
+    background: rgba(63, 185, 80, 0.06);
+  }
+  .term-waiting {
+    padding: 10px 12px;
+    color: var(--text-dim);
+    opacity: 0.6;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Splatify</h1>
+  <span class="badge">Gaussian Splatting Multi-Agent Pipeline</span>
+  <span class="badge">gs_template + gsplat + nerfstudio</span>
+  <span style="margin-left:auto;display:flex;gap:16px;">
+    <a href="/invent" style="color:#58a6ff;text-decoration:none;font-size:13px;">Invent</a>
+    <a href="/discover" style="color:#3fb950;text-decoration:none;font-size:13px;">Discover</a>
+  </span>
+</header>
+
+<div class="container">
+  <!-- ── Left: Config Panel ── -->
+  <div>
+    <div class="card" style="margin-bottom: 16px;">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1 2.5A2.5 2.5 0 013.5 0h8.75a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0V1.5H3.5a1 1 0 00-1 1v8a1 1 0 001 1h5.75a.75.75 0 010 1.5H3.5A2.5 2.5 0 011 10.5v-8z"/><path d="M13.68 6.28a.75.75 0 010 1.06l-3.5 3.5a.75.75 0 01-1.06-1.06L11.94 7l-2.82-2.78a.75.75 0 011.06-1.06l3.5 3.5z"/></svg>
+        Paper Input
+      </div>
+      <div class="card-body">
+        <label for="arxiv">arXiv URL or ID</label>
+        <input type="text" id="arxiv" placeholder="2312.17561 or https://arxiv.org/abs/..." />
+
+        <label for="pdf_path">Or local PDF path</label>
+        <input type="text" id="pdf_path" placeholder="/path/to/paper.pdf" />
+
+        <label for="method_name">Method name override (optional)</label>
+        <input type="text" id="method_name" placeholder="e.g. my_custom_gs" />
+
+        <label for="dataset">Dataset</label>
+        <select id="dataset" onchange="updateScenePlaceholder()">
+          <option value="mipnerf360" selected>Mip-NeRF 360 (outdoor/indoor)</option>
+          <option value="llff">LLFF (forward-facing)</option>
+        </select>
+
+        <label for="scenes">Scene(s) <small style="color: var(--text-dim);">comma-separated, e.g. garden,bicycle</small></label>
+        <input type="text" id="scenes" placeholder="garden" />
+
+        <label for="data_path">Training data path <small style="color: var(--text-dim);">(optional, auto-resolved from dataset)</small></label>
+        <input type="text" id="data_path" placeholder="/path/to/dataset (leave empty to use default)" />
+
+        <label for="expected_psnr">Expected PSNR <small style="color: var(--text-dim);">(optional, auto-set from dataset/scene)</small></label>
+        <input type="number" id="expected_psnr" placeholder="auto" min="0" max="60" step="0.5" />
+
+        <label for="num_views">Number of Views <small style="color: var(--text-dim);">training views for few-shot</small></label>
+        <select id="num_views">
+          <option value="-1" selected>Full (all views)</option>
+          <option value="3">3 views</option>
+          <option value="6">6 views</option>
+          <option value="9">9 views</option>
+          <option value="12">12 views</option>
+          <option value="24">24 views</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom: 16px;">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M7.429 1.525a6.593 6.593 0 011.142 0c.036.003.108.036.137.146l.289 1.105c.147.56.55.967.997 1.189.174.086.341.183.501.29.417.278.97.423 1.53.27l1.102-.303c.11-.03.175.016.195.046.219.31.41.641.573.989.014.031.022.11-.059.19l-.815.806c-.411.406-.562.957-.53 1.456a4.588 4.588 0 010 .582c-.032.499.119 1.05.53 1.456l.815.806c.08.08.073.159.059.19a6.494 6.494 0 01-.573.99c-.02.029-.086.074-.195.045l-1.103-.303c-.559-.153-1.112-.008-1.529.27-.16.107-.327.204-.5.29-.449.222-.851.628-.998 1.189l-.289 1.105c-.03.11-.102.143-.137.146a6.613 6.613 0 01-1.142 0c-.036-.003-.108-.037-.137-.146l-.289-1.105c-.147-.56-.55-.967-.997-1.189a4.502 4.502 0 01-.501-.29c-.417-.278-.97-.423-1.53-.27l-1.102.303c-.11.03-.175-.016-.195-.046a6.492 6.492 0 01-.573-.989c-.014-.031-.022-.11.059-.19l.815-.806c.411-.406.562-.957.53-1.456a4.587 4.587 0 010-.582c.032-.499-.119-1.05-.53-1.456l-.815-.806c-.08-.08-.073-.159-.059-.19a6.44 6.44 0 01.573-.99c.02-.029.086-.074.195-.045l1.103.303c.559.153 1.112.008 1.529-.27.16-.107.327-.204.5-.29.449-.222.851-.628.998-1.189l.289-1.105c.03-.11.102-.143.137-.146zM8 0c-.236 0-.47.01-.701.03-.743.065-1.29.615-1.458 1.261l-.29 1.106c-.017.066-.078.158-.211.224a5.994 5.994 0 00-.668.386c-.123.082-.233.09-.3.071L3.27 2.776c-.644-.177-1.392.02-1.82.63a7.977 7.977 0 00-.704 1.217c-.315.675-.112 1.422.312 1.942l.814.806c.05.048.098.147.088.294a6.084 6.084 0 000 .772c.01.147-.038.246-.088.294l-.814.806c-.424.52-.627 1.267-.312 1.942.205.44.44.86.704 1.218.428.609 1.176.806 1.82.63l1.103-.303c.066-.019.176-.011.299.071.213.143.436.272.668.386.133.066.194.158.212.224l.289 1.106c.169.646.715 1.196 1.458 1.26a8.094 8.094 0 001.402 0c.743-.064 1.29-.614 1.458-1.26l.29-1.106c.017-.066.078-.158.211-.224a5.98 5.98 0 00.668-.386c.123-.082.233-.09.3-.071l1.102.302c.644.177 1.392-.02 1.82-.63.264-.358.5-.778.704-1.217.315-.675.112-1.422-.312-1.942l-.814-.806c-.05-.048-.098-.147-.088-.294a6.1 6.1 0 000-.772c-.01-.147.039-.246.088-.294l.814-.806c.424-.52.627-1.267.312-1.942a7.97 7.97 0 00-.704-1.218c-.428-.609-1.176-.806-1.82-.63l-1.103.303c-.066.019-.176.011-.299-.071a5.991 5.991 0 00-.668-.386c-.133-.066-.194-.158-.212-.224L10.16 1.29C9.99.645 9.444.095 8.701.031A8.094 8.094 0 008 0zm1.5 8a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM11 8a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Pipeline Options
+      </div>
+      <div class="card-body">
+        <label for="model">Model <small style="color: var(--text-dim);">cost per run estimate</small></label>
+        <select id="model">
+          <option value="sonnet" selected>Sonnet — ~$4-5 (recommended)</option>
+          <option value="smart">Smart — Opus coder + Sonnet rest (~$8-10)</option>
+          <option value="opus">Opus — best quality (~$20-25)</option>
+          <option value="haiku">Haiku — cheapest (~$1-2)</option>
+        </select>
+
+        <div class="toggle-row">
+          <div class="toggle-label">Code Review<small>Review &amp; fix loop</small></div>
+          <label class="switch"><input type="checkbox" id="opt-review" checked><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">Novelty Validation<small>Gap analysis vs paper</small></div>
+          <label class="switch"><input type="checkbox" id="opt-validation" checked><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">Smoke Test<small>pip install + 10 iters</small></div>
+          <label class="switch"><input type="checkbox" id="opt-test" checked><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">Full Training<small>Run ns-train (30k iters)</small></div>
+          <label class="switch"><input type="checkbox" id="opt-train"><span class="slider"></span></label>
+        </div>
+
+        <label for="viewer_port" style="margin-top: 8px;">Viewer Port <small style="color: var(--text-dim);">(optional, enables nerfstudio viewer)</small></label>
+        <input type="number" id="viewer_port" placeholder="e.g. 7007" min="1024" max="65535" />
+
+        <button class="btn btn-primary" id="btn-run" onclick="startPipeline()">
+          Run Splatify Pipeline
+        </button>
+        <button class="btn btn-danger" id="btn-stop" onclick="stopPipeline()">
+          Stop Pipeline
+        </button>
+      </div>
+    </div>
+
+    <!-- Animated Agent Cards -->
+    <div class="card">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 3.25a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zm5.677-.177L9.573.677A.25.25 0 0110 .854V2.5h1A2.5 2.5 0 0113.5 5v5.628a2.251 2.251 0 11-1.5 0V5a1 1 0 00-1-1h-1v1.646a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354z"/></svg>
+        Agents
+        <span id="agents-counter" style="margin-left:auto;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text-dim);">0 / 8</span>
+      </div>
+      <div class="card-body" style="padding:10px;">
+        <div class="agent-cards-list" id="agent-cards-list">
+          <div class="agent-card-live" id="chip-parser" data-agent="parser">
+            <div class="ac-header">
+              <div class="ac-dot"></div>
+              <div class="ac-icon">&#x1F4C4;</div>
+              <div class="ac-name">Parser</div>
+              <span class="ac-badge" id="ac-status-parser"></span>
+            </div>
+            <div class="ac-terminal" id="ac-term-parser"></div>
+            <div class="ac-footer"><span id="ac-tools-parser">0 tools</span><span id="ac-time-parser"></span></div>
+          </div>
+          <div class="agent-card-live" id="chip-planner" data-agent="planner">
+            <div class="ac-header">
+              <div class="ac-dot"></div>
+              <div class="ac-icon">&#x1F5FA;</div>
+              <div class="ac-name">Planner</div>
+              <span class="ac-badge" id="ac-status-planner"></span>
+            </div>
+            <div class="ac-terminal" id="ac-term-planner"></div>
+            <div class="ac-footer"><span id="ac-tools-planner">0 tools</span><span id="ac-time-planner"></span></div>
+          </div>
+          <div class="agent-card-live" id="chip-coder" data-agent="coder">
+            <div class="ac-header">
+              <div class="ac-dot"></div>
+              <div class="ac-icon">&#x1F4BB;</div>
+              <div class="ac-name">Coder</div>
+              <span class="ac-badge" id="ac-status-coder"></span>
+            </div>
+            <div class="ac-terminal" id="ac-term-coder"></div>
+            <div class="ac-footer"><span id="ac-tools-coder">0 tools</span><span id="ac-time-coder"></span></div>
+          </div>
+          <div class="agent-card-live" id="chip-reviewer" data-agent="reviewer">
+            <div class="ac-header">
+              <div class="ac-dot"></div>
+              <div class="ac-icon">&#x1F50D;</div>
+              <div class="ac-name">Reviewer</div>
+              <span class="ac-badge" id="ac-status-reviewer"></span>
+            </div>
+            <div class="ac-terminal" id="ac-term-reviewer"></div>
+            <div class="ac-footer"><span id="ac-tools-reviewer">0 tools</span><span id="ac-time-reviewer"></span></div>
+          </div>
+          <div class="agent-card-live" id="chip-validator" data-agent="validator">
+            <div class="ac-header">
+              <div class="ac-dot"></div>
+              <div class="ac-icon">&#x2705;</div>
+              <div class="ac-name">Validator</div>
+              <span class="ac-badge" id="ac-status-validator"></span>
+            </div>
+            <div class="ac-terminal" id="ac-term-validator"></div>
+            <div class="ac-footer"><span id="ac-tools-validator">0 tools</span><span id="ac-time-validator"></span></div>
+          </div>
+          <div class="agent-card-live" id="chip-integrator" data-agent="integrator">
+            <div class="ac-header">
+              <div class="ac-dot"></div>
+              <div class="ac-icon">&#x1F517;</div>
+              <div class="ac-name">Integrator</div>
+              <span class="ac-badge" id="ac-status-integrator"></span>
+            </div>
+            <div class="ac-terminal" id="ac-term-integrator"></div>
+            <div class="ac-footer"><span id="ac-tools-integrator">0 tools</span><span id="ac-time-integrator"></span></div>
+          </div>
+          <div class="agent-card-live" id="chip-tester" data-agent="tester">
+            <div class="ac-header">
+              <div class="ac-dot"></div>
+              <div class="ac-icon">&#x1F9EA;</div>
+              <div class="ac-name">Tester</div>
+              <span class="ac-badge" id="ac-status-tester"></span>
+            </div>
+            <div class="ac-terminal" id="ac-term-tester"></div>
+            <div class="ac-footer"><span id="ac-tools-tester">0 tools</span><span id="ac-time-tester"></span></div>
+          </div>
+          <div class="agent-card-live" id="chip-debugger" data-agent="debugger">
+            <div class="ac-header">
+              <div class="ac-dot"></div>
+              <div class="ac-icon">&#x1F41B;</div>
+              <div class="ac-name">Debugger</div>
+              <span class="ac-badge" id="ac-status-debugger"></span>
+            </div>
+            <div class="ac-terminal" id="ac-term-debugger"></div>
+            <div class="ac-footer"><span id="ac-tools-debugger">0 tools</span><span id="ac-time-debugger"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Viewer Link (shown when training with viewer port) -->
+    <div class="card" id="viewer-card" style="display: none; margin-bottom: 16px;">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 010 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.831.88 9.577.43 8.899a1.62 1.62 0 010-1.798c.45-.678 1.367-1.932 2.637-3.023C4.33 2.992 6.019 2 8 2zm0 1.5C6.525 3.5 5.11 4.258 4.008 5.203 2.99 6.076 2.207 7.1 1.755 7.78a.12.12 0 000 .44c.452.68 1.235 1.704 2.253 2.577C5.11 11.742 6.525 12.5 8 12.5s2.89-.758 3.992-1.703c1.018-.873 1.801-1.897 2.253-2.577a.12.12 0 000-.44c-.452-.68-1.235-1.704-2.253-2.577C10.89 4.258 9.475 3.5 8 3.5zM8 6a2 2 0 100 4 2 2 0 000-4z"/></svg>
+        Nerfstudio Viewer
+      </div>
+      <div class="card-body" style="text-align: center;">
+        <a id="viewer-link" href="#" target="_blank" rel="noopener noreferrer"
+           style="display: inline-block; padding: 8px 16px; background: var(--accent); color: #fff; border-radius: var(--radius); text-decoration: none; font-weight: 600;">
+          Open Viewer
+        </a>
+        <div style="margin-top: 8px; font-size: 12px; color: var(--text-dim);">
+          Port: <span id="viewer-port-display">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Eval Results -->
+    <div class="card" id="eval-results-card">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 1.75V13.5h13.75a.75.75 0 010 1.5H.75a.75.75 0 01-.75-.75V1.75a.75.75 0 011.5 0zm14.28 2.53a.75.75 0 00-1.06-1.06L10 7.94 7.53 5.47a.75.75 0 00-1.06 0L3.22 8.72a.75.75 0 001.06 1.06L7 7.06l2.47 2.47a.75.75 0 001.06 0l5.25-5.25z"/></svg>
+        Eval Results
+      </div>
+      <div class="card-body" style="padding:0;">
+        <table class="eval-table" id="eval-table">
+          <thead><tr>
+            <th>Scene</th><th>PSNR</th><th>SSIM</th><th>LPIPS</th><th>FPS</th><th>#GS</th>
+          </tr></thead>
+          <tbody id="eval-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Center: Log Panel ── -->
+  <div class="card" id="log-panel">
+    <div class="card-header">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.72 3.22a.75.75 0 011.06 0l3.5 3.5a.75.75 0 010 1.06l-3.5 3.5a.75.75 0 01-1.06-1.06L7.69 7.5 4.72 4.28a.75.75 0 010-1.06zm5.5 7.28a.75.75 0 010-1.5h3a.75.75 0 010 1.5h-3z"/></svg>
+      Live Pipeline Log
+    </div>
+    <div id="log">
+      <div class="log-entry log-system">Ready. Enter a Gaussian Splatting paper and click Run Splatify Pipeline.</div>
+    </div>
+    <div class="status-bar">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">Idle</span>
+      <span class="token-stats" id="token-stats"></span>
+      <span style="margin-left:auto" id="elapsed-text"></span>
+    </div>
+  </div>
+
+  <!-- ── Right: Agent Network + Terminal ── -->
+  <div class="card" id="detail-panel">
+    <div class="card-header">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 3.25a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zm5.677-.177L9.573.677A.25.25 0 0110 .854V2.5h1A2.5 2.5 0 0113.5 5v5.628a2.251 2.251 0 11-1.5 0V5a1 1 0 00-1-1h-1v1.646a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354z"/></svg>
+      Agent Network
+      <span style="margin-left:auto;font-size:10px;color:var(--text-dim);font-family:monospace;" id="net-status-label">Live</span>
+    </div>
+    <div id="network-area">
+      <div class="net-grid"></div>
+      <canvas id="network-canvas"></canvas>
+    </div>
+    <div class="card-header">
+      <span style="display:flex;align-items:center;gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.72 3.22a.75.75 0 011.06 0l3.5 3.5a.75.75 0 010 1.06l-3.5 3.5a.75.75 0 01-1.06-1.06L7.69 7.5 4.72 4.28a.75.75 0 010-1.06zm5.5 7.28a.75.75 0 010-1.5h3a.75.75 0 010 1.5h-3z"/></svg>
+        Terminal
+      </span>
+      <span id="detail-tool-name"></span>
+    </div>
+    <div id="detail-content">
+      <span class="detail-empty">Tool details will appear here as the pipeline runs.</span>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentJobId = null;
+let eventSource = null;
+let startTime = null;
+let elapsedTimer = null;
+let currentAgent = null;
+let totalTokens = 0;
+let totalInputTokens = 0;
+let totalOutputTokens = 0;
+
+// Per-agent state tracking for animated cards
+const agentState = {};
+const AGENT_NAMES = ['parser', 'planner', 'coder', 'reviewer', 'validator', 'integrator', 'tester', 'debugger'];
+let completedAgents = 0;
+AGENT_NAMES.forEach(name => {
+  agentState[name] = { tools: 0, startTime: null, status: 'idle' };
+});
+
+const log = document.getElementById('log');
+const btn = document.getElementById('btn-run');
+const dot = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+const elapsedText = document.getElementById('elapsed-text');
+const tokenStats = document.getElementById('token-stats');
+const detailContent = document.getElementById('detail-content');
+const detailToolName = document.getElementById('detail-tool-name');
+
+function setDetailTool(toolName, detail) {
+  detailToolName.textContent = toolName;
+
+  if (toolName === 'Bash' && detail && detail.command) {
+    // Append to terminal (don't clear) — remove any previous "Running..." indicator
+    const prevWait = detailContent.querySelector('.term-waiting');
+    if (prevWait) prevWait.remove();
+    // Remove the empty placeholder
+    const empty = detailContent.querySelector('.detail-empty');
+    if (empty) empty.remove();
+
+    const sep = document.createElement('div');
+    sep.style.borderTop = '1px solid var(--border)';
+    if (detailContent.children.length > 0) detailContent.appendChild(sep);
+
+    const cmd = document.createElement('div');
+    cmd.className = 'term-cmd';
+    cmd.innerHTML = '<span class="term-prompt">$</span>' + escapeHtml(detail.command);
+    detailContent.appendChild(cmd);
+    const wait = document.createElement('div');
+    wait.className = 'term-waiting';
+    wait.textContent = 'Running...';
+    detailContent.appendChild(wait);
+    detailContent.scrollTop = detailContent.scrollHeight;
+    return;
+
+  }
+
+  // Non-Bash tools replace the detail panel
+  detailContent.innerHTML = '';
+
+  if ((toolName === 'Read' || toolName === 'Write' || toolName === 'Edit') && detail) {
+    if (detail.file_path) {
+      const fp = document.createElement('div');
+      fp.className = 'term-file';
+      fp.textContent = detail.file_path;
+      detailContent.appendChild(fp);
+    }
+    if (toolName === 'Edit' && detail.old_string) {
+      const lbl1 = document.createElement('div');
+      lbl1.className = 'term-label';
+      lbl1.textContent = 'old';
+      detailContent.appendChild(lbl1);
+      const old = document.createElement('div');
+      old.className = 'term-diff-old';
+      old.textContent = detail.old_string;
+      detailContent.appendChild(old);
+      const lbl2 = document.createElement('div');
+      lbl2.className = 'term-label';
+      lbl2.textContent = 'new';
+      detailContent.appendChild(lbl2);
+      const nw = document.createElement('div');
+      nw.className = 'term-diff-new';
+      nw.textContent = detail.new_string || '';
+      detailContent.appendChild(nw);
+    } else if (toolName === 'Write' && detail.content_preview) {
+      const lbl = document.createElement('div');
+      lbl.className = 'term-label';
+      lbl.textContent = 'content';
+      detailContent.appendChild(lbl);
+      const c = document.createElement('div');
+      c.className = 'term-output';
+      c.textContent = detail.content_preview;
+      detailContent.appendChild(c);
+    }
+    const wait = document.createElement('div');
+    wait.className = 'term-waiting';
+    wait.textContent = 'Waiting for result...';
+    detailContent.appendChild(wait);
+
+  } else if ((toolName === 'Grep' || toolName === 'Glob') && detail) {
+    const cmd = document.createElement('div');
+    cmd.className = 'term-cmd';
+    cmd.innerHTML = '<span class="term-prompt">' + escapeHtml(toolName) + '</span>' +
+      escapeHtml(detail.pattern || '') +
+      (detail.path ? '  <span style="color:var(--text-dim)">in ' + escapeHtml(detail.path) + '</span>' : '');
+    detailContent.appendChild(cmd);
+    const wait = document.createElement('div');
+    wait.className = 'term-waiting';
+    wait.textContent = 'Searching...';
+    detailContent.appendChild(wait);
+
+  } else {
+    const out = document.createElement('div');
+    out.className = 'term-output';
+    out.textContent = typeof detail === 'string' ? detail : JSON.stringify(detail, null, 2);
+    detailContent.appendChild(out);
+  }
+}
+
+function setDetailOutput(content) {
+  // Replace the "waiting" message with actual output, keep the command header
+  const waiting = detailContent.querySelector('.term-waiting');
+  if (waiting) waiting.remove();
+
+  const out = document.createElement('div');
+  out.className = 'term-output';
+  out.textContent = content;
+  detailContent.appendChild(out);
+  detailContent.scrollTop = detailContent.scrollHeight;
+}
+
+function clearDetail() {
+  detailToolName.textContent = '';
+  detailContent.innerHTML = '<div class="detail-empty">Terminal output will appear here as the pipeline runs.</div>';
+}
+
+function formatTokens(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+  return String(n);
+}
+
+function updateTokenDisplay() {
+  // Prefer the accurately tracked totalTokens (summed across tasks);
+  // fall back to input+output split if available
+  const display = totalTokens || (totalInputTokens + totalOutputTokens);
+  if (display === 0) {
+    tokenStats.textContent = '';
+    return;
+  }
+  if (totalInputTokens > 0 && totalOutputTokens > 0 && !totalTokens) {
+    tokenStats.textContent = `${formatTokens(totalInputTokens)} in + ${formatTokens(totalOutputTokens)} out = ${formatTokens(display)} tokens`;
+  } else {
+    tokenStats.textContent = `${formatTokens(display)} tokens`;
+  }
+}
+
+function addLog(html, cls = '') {
+  const div = document.createElement('div');
+  div.className = 'log-entry ' + cls;
+  div.innerHTML = html;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function setStatus(state, text) {
+  dot.className = 'status-dot ' + state;
+  statusText.textContent = text;
+}
+
+function setAgentActive(name) {
+  if (currentAgent && currentAgent !== name) {
+    const prev = document.getElementById('chip-' + currentAgent);
+    if (prev) { prev.classList.remove('active'); prev.classList.add('done'); }
+    if (agentState[currentAgent]) {
+      agentState[currentAgent].status = 'done';
+      completedAgents++;
+      document.getElementById('agents-counter').textContent = completedAgents + ' / 8';
+      const badge = document.getElementById('ac-status-' + currentAgent);
+      if (badge) badge.textContent = 'DONE';
+      // Update time one last time
+      if (agentState[currentAgent].startTime) {
+        const el = ((Date.now() - agentState[currentAgent].startTime) / 1000).toFixed(0);
+        const timeEl = document.getElementById('ac-time-' + currentAgent);
+        if (timeEl) timeEl.textContent = el + 's';
+      }
+    }
+  }
+  currentAgent = name;
+  const chip = document.getElementById('chip-' + name);
+  if (chip) chip.classList.add('active');
+  if (agentState[name]) {
+    agentState[name].status = 'active';
+    agentState[name].startTime = agentState[name].startTime || Date.now();
+    const badge = document.getElementById('ac-status-' + name);
+    if (badge) badge.textContent = 'WORKING';
+  }
+  // Scroll the card into view
+  if (chip) chip.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function addAgentTerminalLine(name, html) {
+  const term = document.getElementById('ac-term-' + name);
+  if (!term) return;
+  const line = document.createElement('div');
+  line.className = 'ac-line';
+  line.innerHTML = html;
+  term.appendChild(line);
+  // Keep only last 4 lines
+  while (term.children.length > 4) term.removeChild(term.firstChild);
+}
+
+function incrementAgentTools(name) {
+  if (!agentState[name]) return;
+  agentState[name].tools++;
+  const el = document.getElementById('ac-tools-' + name);
+  if (el) el.textContent = agentState[name].tools + ' tools';
+  // Update elapsed time
+  if (agentState[name].startTime) {
+    const elapsed = ((Date.now() - agentState[name].startTime) / 1000).toFixed(0);
+    const timeEl = document.getElementById('ac-time-' + name);
+    if (timeEl) timeEl.textContent = elapsed + 's';
+  }
+}
+
+function resetAgentChips() {
+  document.querySelectorAll('.agent-card-live').forEach(c => {
+    c.classList.remove('active', 'done');
+  });
+  AGENT_NAMES.forEach(name => {
+    agentState[name] = { tools: 0, startTime: null, status: 'idle' };
+    const term = document.getElementById('ac-term-' + name);
+    if (term) term.innerHTML = '';
+    const badge = document.getElementById('ac-status-' + name);
+    if (badge) badge.textContent = '';
+    const tools = document.getElementById('ac-tools-' + name);
+    if (tools) tools.textContent = '0 tools';
+    const time = document.getElementById('ac-time-' + name);
+    if (time) time.textContent = '';
+  });
+  completedAgents = 0;
+  document.getElementById('agents-counter').textContent = '0 / 8';
+  currentAgent = null;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function updateScenePlaceholder() {
+  const ds = document.getElementById('dataset').value;
+  const scenesInput = document.getElementById('scenes');
+  if (ds === 'llff') {
+    scenesInput.placeholder = 'fern';
+  } else {
+    scenesInput.placeholder = 'garden';
+  }
+}
+
+async function startPipeline() {
+  const arxiv = document.getElementById('arxiv').value.trim();
+  const pdfPath = document.getElementById('pdf_path').value.trim();
+  const methodName = document.getElementById('method_name').value.trim();
+  const dataPath = document.getElementById('data_path').value.trim();
+
+  if (!arxiv && !pdfPath) {
+    alert('Please enter an arXiv URL/ID or PDF path.');
+    return;
+  }
+
+  btn.disabled = true;
+  document.getElementById('btn-stop').style.display = 'block';
+  log.innerHTML = '';
+  resetAgentChips();
+  clearDetail();
+  document.getElementById('eval-results-card').classList.remove('visible');
+  document.getElementById('eval-tbody').innerHTML = '';
+  document.getElementById('viewer-card').style.display = 'none';
+  setStatus('running', 'Starting...');
+  totalTokens = 0;
+  totalInputTokens = 0;
+  totalOutputTokens = 0;
+  updateTokenDisplay();
+  startTime = Date.now();
+  elapsedTimer = setInterval(() => {
+    const s = ((Date.now() - startTime) / 1000).toFixed(0);
+    elapsedText.textContent = s + 's';
+  }, 1000);
+
+  addLog('Starting Splatify pipeline...', 'log-system');
+
+  try {
+    const resp = await fetch('/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        arxiv,
+        pdf_path: pdfPath,
+        method_name: methodName,
+        data_path: dataPath,
+        dataset: document.getElementById('dataset').value,
+        scenes: document.getElementById('scenes').value.trim(),
+        model: document.getElementById('model').value,
+        enable_review: document.getElementById('opt-review').checked,
+        enable_validation: document.getElementById('opt-validation').checked,
+        enable_smoke_test: document.getElementById('opt-test').checked,
+        enable_training: document.getElementById('opt-train').checked,
+        expected_psnr: document.getElementById('expected_psnr').value || null,
+        num_views: parseInt(document.getElementById('num_views').value),
+        viewer_port: document.getElementById('viewer_port').value || null,
+      }),
+    });
+
+    const data = await resp.json();
+    if (data.error) {
+      addLog(escapeHtml(data.error), 'log-error');
+      setStatus('error', 'Failed');
+      btn.disabled = false;
+      clearInterval(elapsedTimer);
+      return;
+    }
+
+    currentJobId = data.job_id;
+    addLog(`Job <b>${data.job_id}</b> &mdash; Run <b>${data.run_id}</b>`, 'log-system');
+
+    // Connect SSE
+    if (eventSource) eventSource.close();
+    eventSource = new EventSource('/api/events/' + data.job_id);
+    eventSource.onmessage = (ev) => {
+      const e = JSON.parse(ev.data);
+      handleEvent(e);
+    };
+    eventSource.onerror = () => {
+      setStatus('error', 'Connection lost');
+      eventSource.close();
+      btn.disabled = false;
+      document.getElementById('btn-stop').style.display = 'none';
+      clearInterval(elapsedTimer);
+    };
+  } catch (err) {
+    addLog(escapeHtml(String(err)), 'log-error');
+    setStatus('error', 'Failed');
+    btn.disabled = false;
+    document.getElementById('btn-stop').style.display = 'none';
+    clearInterval(elapsedTimer);
+  }
+}
+
+async function stopPipeline() {
+  if (!currentJobId) return;
+  const stopBtn = document.getElementById('btn-stop');
+  stopBtn.disabled = true;
+  stopBtn.textContent = 'Stopping...';
+  try {
+    await fetch('/api/stop/' + currentJobId, { method: 'POST' });
+    addLog('Stop requested — waiting for pipeline to halt...', 'log-error');
+  } catch (err) {
+    addLog('Failed to stop: ' + escapeHtml(String(err)), 'log-error');
+  }
+}
+
+function handleEvent(e) {
+  switch (e.type) {
+    case 'stage':
+      setStatus('running', e.stage || 'Working...');
+      addLog('&#9654; ' + escapeHtml(e.message), 'log-stage');
+      break;
+
+    case 'agent':
+      setStatus('running', e.agent + ' agent');
+      setAgentActive(e.agent);
+      addLog('&#x1F916; <b>' + escapeHtml(e.agent) + '</b> agent' +
+        (e.description ? ' &mdash; ' + escapeHtml(e.description) : ''), 'log-agent');
+      break;
+
+    case 'task_started':
+      if (e.agent) setAgentActive(e.agent);
+      addLog('&#x25B6; ' + escapeHtml(e.message || 'Subagent started'), 'log-agent');
+      break;
+
+    case 'thinking':
+      addLog(escapeHtml(e.message), 'log-thinking');
+      if (currentAgent) {
+        addAgentTerminalLine(currentAgent, '<span class="ac-think">' + escapeHtml((e.message || '').substring(0, 60)) + '</span>');
+      }
+      break;
+
+    case 'text':
+      addLog(escapeHtml(e.message), 'log-text');
+      if (currentAgent) {
+        addAgentTerminalLine(currentAgent, escapeHtml((e.message || '').substring(0, 60)));
+      }
+      break;
+
+    case 'tool':
+      addLog('<span class="tool-name">' + escapeHtml(e.tool) + '</span> ' +
+        '<span class="tool-path">' + escapeHtml(e.summary || '') + '</span>', 'log-tool');
+      setDetailTool(e.tool, e.detail || {});
+      if (currentAgent) {
+        addAgentTerminalLine(currentAgent, '<span class="ac-tool">' + escapeHtml(e.tool) + '</span> <span class="ac-path">' + escapeHtml((e.summary || '').substring(0, 40)) + '</span>');
+        incrementAgentTools(currentAgent);
+      }
+      break;
+
+    case 'tool_result':
+      setDetailOutput(e.content || '');
+      break;
+
+    case 'task_progress':
+      if (e.total_tokens !== undefined) totalTokens = e.total_tokens;
+      if (e.total_input_tokens !== undefined) totalInputTokens = e.total_input_tokens;
+      if (e.total_output_tokens !== undefined) totalOutputTokens = e.total_output_tokens;
+      updateTokenDisplay();
+      break;
+
+    case 'task_done':
+      addLog('&#x2714; ' + escapeHtml(e.message || 'Done'), 'log-progress');
+      // Mark current agent as done
+      if (currentAgent) {
+        const card = document.getElementById('chip-' + currentAgent);
+        if (card) { card.classList.remove('active'); card.classList.add('done'); }
+        if (agentState[currentAgent]) {
+          agentState[currentAgent].status = 'done';
+          completedAgents++;
+          document.getElementById('agents-counter').textContent = completedAgents + ' / 8';
+          const badge = document.getElementById('ac-status-' + currentAgent);
+          if (badge) badge.textContent = 'DONE';
+          if (agentState[currentAgent].startTime) {
+            const elapsed = ((Date.now() - agentState[currentAgent].startTime) / 1000).toFixed(0);
+            const timeEl = document.getElementById('ac-time-' + currentAgent);
+            if (timeEl) timeEl.textContent = elapsed + 's';
+          }
+        }
+        currentAgent = null;
+      }
+      break;
+
+    case 'error':
+      addLog(escapeHtml(e.message), 'log-error');
+      setStatus('error', 'Error');
+      break;
+
+    case 'result':
+      addLog(escapeHtml(e.message), 'log-text');
+      break;
+
+    case 'done': {
+      if (e.total_tokens !== undefined) totalTokens = e.total_tokens;
+      if (e.total_input_tokens !== undefined) totalInputTokens = e.total_input_tokens;
+      if (e.total_output_tokens !== undefined) totalOutputTokens = e.total_output_tokens;
+      updateTokenDisplay();
+      const files = e.files || [];
+      const totalTok = e.total_tokens || ((e.total_input_tokens || 0) + (e.total_output_tokens || 0));
+      const tokStr = totalTok > 0 ? ' | ' + formatTokens(totalTok) + ' tokens' : '';
+      const costStr = e.total_cost_usd ? ' | $' + e.total_cost_usd.toFixed(2) : '';
+      let html = '&#x2705; Splatify pipeline complete! (' + (e.duration || '?') + 's' + tokStr + costStr + ')';
+      if (files.length > 0) {
+        html += '<div class="files-list">' +
+          files.map(f => '<div class="file">' + escapeHtml(f) + '</div>').join('') +
+          '</div>';
+      }
+      addLog(html, 'log-done');
+      setStatus('done', e.status === 'completed' ? 'Completed' : e.status);
+      if (eventSource) eventSource.close();
+      btn.disabled = false;
+      document.getElementById('btn-stop').style.display = 'none';
+      clearInterval(elapsedTimer);
+      break;
+    }
+
+    case 'system':
+      addLog(escapeHtml(e.message || ''), 'log-system');
+      break;
+
+    case 'viewer_started':
+      showViewerLink(e.port, e.url);
+      addLog('Nerfstudio viewer available — see Viewer panel.', 'log-stage');
+      break;
+
+    case 'eval_results':
+      showEvalResults(e);
+      addLog('Eval results received — see Results panel.', 'log-stage');
+      break;
+
+    case 'heartbeat':
+      break;
+
+    default:
+      if (e.message) addLog(escapeHtml(e.message), 'log-system');
+  }
+}
+
+function showViewerLink(port, url) {
+  const card = document.getElementById('viewer-card');
+  const link = document.getElementById('viewer-link');
+  const portDisplay = document.getElementById('viewer-port-display');
+  link.href = url;
+  portDisplay.textContent = port;
+  card.style.display = '';
+}
+
+function showEvalResults(data) {
+  const card = document.getElementById('eval-results-card');
+  const tbody = document.getElementById('eval-tbody');
+  tbody.innerHTML = '';
+
+  const scenes = data.scenes || {};
+  const averages = data.averages || {};
+
+  for (const [scene, m] of Object.entries(scenes)) {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + escapeHtml(scene) + '</td>' +
+      '<td>' + m.psnr.toFixed(2) + '</td>' +
+      '<td>' + m.ssim.toFixed(4) + '</td>' +
+      '<td>' + m.lpips.toFixed(4) + '</td>' +
+      '<td>' + m.fps.toFixed(1) + '</td>' +
+      '<td>' + escapeHtml(String(m.num_gaussians)) + '</td>';
+    tbody.appendChild(tr);
+  }
+
+  if (averages.psnr !== undefined) {
+    const tr = document.createElement('tr');
+    tr.className = 'eval-avg';
+    tr.innerHTML =
+      '<td>AVERAGE</td>' +
+      '<td>' + averages.psnr.toFixed(2) + '</td>' +
+      '<td>' + averages.ssim.toFixed(4) + '</td>' +
+      '<td>' + averages.lpips.toFixed(4) + '</td>' +
+      '<td>' + averages.fps.toFixed(1) + '</td>' +
+      '<td>' + escapeHtml(String(averages.num_gaussians)) + '</td>';
+    tbody.appendChild(tr);
+  }
+
+  card.classList.add('visible');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LIVE AGENT NETWORK CANVAS
+// ═══════════════════════════════════════════════════════════════
+
+const AGENT_COLORS = {
+  parser:'#f97316', planner:'#a855f7', coder:'#3b82f6', reviewer:'#eab308',
+  validator:'#22c55e', integrator:'#06b6d4', tester:'#ec4899', debugger:'#ef4444',
+};
+const networkCanvas = document.getElementById('network-canvas');
+const netCtx = networkCanvas ? networkCanvas.getContext('2d') : null;
+let netPositions = {};
+
+function resizeNetCanvas() {
+  const area = document.getElementById('network-area');
+  if (!area || !networkCanvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = area.offsetWidth;
+  const h = area.offsetHeight;
+  networkCanvas.width = w * dpr;
+  networkCanvas.height = h * dpr;
+  networkCanvas.style.width = w + 'px';
+  networkCanvas.style.height = h + 'px';
+  netCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  calcNetPositions(w, h);
+}
+
+function calcNetPositions(w, h) {
+  const cx = w / 2, cy = h / 2;
+  const rx = Math.min(w * 0.37, 165);
+  const ry = Math.min(h * 0.36, 130);
+  const start = -Math.PI / 2;
+  AGENT_NAMES.forEach((name, i) => {
+    const a = start + (i / AGENT_NAMES.length) * Math.PI * 2;
+    netPositions[name] = { x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) };
+  });
+  netPositions._hub = { x: cx, y: cy };
+}
+
+function drawNetworkFrame(ts) {
+  if (!netCtx || !networkCanvas.width) { requestAnimationFrame(drawNetworkFrame); return; }
+  const area = document.getElementById('network-area');
+  const w = area ? area.offsetWidth : 420;
+  const h = area ? area.offsetHeight : 340;
+  netCtx.clearRect(0, 0, w, h);
+  const hub = netPositions._hub || { x: w/2, y: h/2 };
+
+  // Draw pipeline flow arcs between sequential done agents
+  for (let i = 0; i < AGENT_NAMES.length - 1; i++) {
+    const fa = AGENT_NAMES[i], ta = AGENT_NAMES[i+1];
+    const fromDone = agentState[fa] && agentState[fa].status === 'done';
+    if (fromDone && netPositions[fa] && netPositions[ta]) {
+      const f = netPositions[fa], t = netPositions[ta];
+      const mx = (f.x+t.x)/2 + (hub.x-(f.x+t.x)/2)*0.3;
+      const my = (f.y+t.y)/2 + (hub.y-(f.y+t.y)/2)*0.3;
+      netCtx.beginPath();
+      netCtx.moveTo(f.x, f.y);
+      netCtx.quadraticCurveTo(mx, my, t.x, t.y);
+      netCtx.strokeStyle = 'rgba(34,197,94,0.12)';
+      netCtx.lineWidth = 1;
+      netCtx.stroke();
+    }
+  }
+
+  // Draw connections from hub to each agent
+  AGENT_NAMES.forEach(name => {
+    const pos = netPositions[name];
+    if (!pos) return;
+    const st = agentState[name] || {};
+    const isActive = st.status === 'active';
+    const isDone = st.status === 'done';
+    const color = AGENT_COLORS[name];
+
+    // Connection line
+    netCtx.beginPath();
+    netCtx.moveTo(hub.x, hub.y);
+    netCtx.lineTo(pos.x, pos.y);
+    if (isActive) {
+      netCtx.strokeStyle = color + '70';
+      netCtx.lineWidth = 2;
+      netCtx.setLineDash([]);
+    } else if (isDone) {
+      netCtx.strokeStyle = 'rgba(34,197,94,0.35)';
+      netCtx.lineWidth = 1.5;
+      netCtx.setLineDash([]);
+    } else {
+      netCtx.strokeStyle = 'rgba(56,68,100,0.18)';
+      netCtx.lineWidth = 1;
+      netCtx.setLineDash([4, 6]);
+    }
+    netCtx.stroke();
+    netCtx.setLineDash([]);
+
+    // Flowing particles for active connections
+    if (isActive) {
+      const t = (ts % 1800) / 1800;
+      for (let p = 0; p < 4; p++) {
+        const pt = (t + p * 0.25) % 1;
+        const px = hub.x + (pos.x - hub.x) * pt;
+        const py = hub.y + (pos.y - hub.y) * pt;
+        const sz = 2.5 - pt * 1.2;
+        const al = Math.floor((1 - pt * 0.6) * 220);
+        netCtx.beginPath();
+        netCtx.arc(px, py, sz, 0, Math.PI * 2);
+        netCtx.fillStyle = color + al.toString(16).padStart(2,'0');
+        netCtx.fill();
+        // glow
+        netCtx.beginPath();
+        netCtx.arc(px, py, sz + 3, 0, Math.PI * 2);
+        netCtx.fillStyle = color + '12';
+        netCtx.fill();
+      }
+    }
+
+    // Agent node
+    const nr = 18;
+    netCtx.beginPath();
+    netCtx.arc(pos.x, pos.y, nr, 0, Math.PI * 2);
+    if (isActive) {
+      netCtx.fillStyle = color + '25';
+      netCtx.fill();
+      netCtx.strokeStyle = color;
+      netCtx.lineWidth = 2;
+      netCtx.stroke();
+      // outer glow ring
+      netCtx.beginPath();
+      netCtx.arc(pos.x, pos.y, nr + 5, 0, Math.PI * 2);
+      netCtx.strokeStyle = color + '20';
+      netCtx.lineWidth = 1;
+      netCtx.stroke();
+    } else if (isDone) {
+      netCtx.fillStyle = 'rgba(34,197,94,0.12)';
+      netCtx.fill();
+      netCtx.strokeStyle = 'rgba(34,197,94,0.45)';
+      netCtx.lineWidth = 1.5;
+      netCtx.stroke();
+    } else {
+      netCtx.fillStyle = 'rgba(16,22,36,0.7)';
+      netCtx.fill();
+      netCtx.strokeStyle = 'rgba(56,68,100,0.25)';
+      netCtx.lineWidth = 1;
+      netCtx.stroke();
+    }
+
+    // Agent initial inside node
+    netCtx.font = '700 11px -apple-system,sans-serif';
+    netCtx.textAlign = 'center';
+    netCtx.textBaseline = 'middle';
+    if (isDone) {
+      netCtx.fillStyle = '#22c55e';
+      netCtx.fillText('\u2713', pos.x, pos.y);
+    } else {
+      netCtx.fillStyle = isActive ? '#fff' : '#64748b';
+      netCtx.fillText(name.charAt(0).toUpperCase(), pos.x, pos.y);
+    }
+
+    // Agent name label
+    netCtx.font = '600 9px -apple-system,sans-serif';
+    netCtx.fillStyle = isActive ? color : isDone ? '#22c55e' : '#475569';
+    netCtx.fillText(name, pos.x, pos.y + nr + 12);
+
+    // Tool count label for active/done
+    if ((isActive || isDone) && st.tools > 0) {
+      netCtx.font = '500 8px monospace';
+      netCtx.fillStyle = '#64748b';
+      netCtx.fillText(st.tools + ' tools', pos.x, pos.y + nr + 22);
+    }
+  });
+
+  // Orchestrator hub
+  const hr = 24;
+  // Outer glow
+  const glowR = hr + 8 + Math.sin(ts / 600) * 3;
+  netCtx.beginPath();
+  netCtx.arc(hub.x, hub.y, glowR, 0, Math.PI * 2);
+  netCtx.strokeStyle = 'rgba(168,85,247,0.12)';
+  netCtx.lineWidth = 1;
+  netCtx.stroke();
+  // Hub circle
+  netCtx.beginPath();
+  netCtx.arc(hub.x, hub.y, hr, 0, Math.PI * 2);
+  const grad = netCtx.createRadialGradient(hub.x-4, hub.y-4, 0, hub.x, hub.y, hr);
+  grad.addColorStop(0, 'rgba(168,85,247,0.25)');
+  grad.addColorStop(1, 'rgba(249,115,22,0.12)');
+  netCtx.fillStyle = grad;
+  netCtx.fill();
+  netCtx.strokeStyle = 'rgba(168,85,247,0.5)';
+  netCtx.lineWidth = 2;
+  netCtx.stroke();
+  // Hub label
+  netCtx.font = '800 8px -apple-system,sans-serif';
+  netCtx.textAlign = 'center';
+  netCtx.textBaseline = 'middle';
+  netCtx.fillStyle = '#a855f7';
+  netCtx.fillText('ORCH', hub.x, hub.y - 3);
+  netCtx.font = '500 7px -apple-system,sans-serif';
+  netCtx.fillStyle = '#7c3aed';
+  netCtx.fillText('claude', hub.x, hub.y + 7);
+
+  requestAnimationFrame(drawNetworkFrame);
+}
+
+// Init network canvas
+window.addEventListener('resize', resizeNetCanvas);
+if (networkCanvas) {
+  resizeNetCanvas();
+  requestAnimationFrame(drawNetworkFrame);
+}
+</script>
+</body>
+</html>

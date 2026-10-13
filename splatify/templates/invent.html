@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Splatify Invent — Evolutionary Tournament</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --cyan: #79c0ff;
+    --orange: #f0883e;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--cyan), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  header .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  header a {
+    margin-left: auto;
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 13px;
+  }
+  header a:hover { text-decoration: underline; }
+
+  .container {
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 320px 1fr 380px;
+    gap: 20px;
+  }
+  @media (max-width: 1400px) {
+    .container { grid-template-columns: 300px 1fr; }
+    #log-panel-col { display: none; }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-body { padding: 18px; }
+
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 14px;
+    margin-bottom: 14px;
+    outline: none;
+  }
+  input:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--text-dim); opacity: 0.6; }
+
+  .btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 8px;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--cyan), var(--purple));
+    color: white;
+  }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* ── Tournament Bracket ── */
+  .bracket {
+    display: flex;
+    align-items: stretch;
+    gap: 24px;
+    min-height: 600px;
+    overflow-x: auto;
+    padding-bottom: 16px;
+  }
+
+  .round-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 200px;
+  }
+  .round-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 0;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+  }
+  .round-header .iters {
+    color: var(--cyan);
+    font-weight: 400;
+  }
+
+  .island-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .island-card.improving {
+    border-color: var(--yellow);
+    box-shadow: 0 0 8px rgba(210, 153, 34, 0.15);
+  }
+  .island-card.training {
+    border-color: var(--cyan);
+    box-shadow: 0 0 8px rgba(88, 166, 255, 0.15);
+  }
+  .island-card.training::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--cyan);
+    animation: trainProgress 10s linear infinite;
+  }
+  @keyframes trainProgress {
+    0% { width: 0%; }
+    100% { width: 100%; }
+  }
+  .island-card.eliminated {
+    opacity: 0.35;
+    border-color: var(--red);
+  }
+  .island-card.eliminated .island-name { text-decoration: line-through; }
+  .island-card.winner {
+    border-color: var(--green);
+    box-shadow: 0 0 16px rgba(63, 185, 80, 0.25);
+    background: rgba(63, 185, 80, 0.06);
+  }
+  .island-card.improved {
+    border-color: var(--green);
+    opacity: 0.9;
+  }
+  .island-card.debugging {
+    border-color: var(--orange);
+    box-shadow: 0 0 8px rgba(240, 136, 62, 0.2);
+  }
+  .island-card.debugging::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--orange);
+    animation: trainProgress 5s linear infinite;
+  }
+  .island-card.error {
+    border-color: var(--red);
+    opacity: 0.5;
+  }
+
+  .island-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .island-id {
+    font-size: 11px;
+    font-weight: 700;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+  .island-card.improving .island-id,
+  .island-card.training .island-id {
+    animation: islandIdPulse 2s infinite;
+  }
+  @keyframes islandIdPulse {
+    0%, 100% { box-shadow: none; }
+    50% { box-shadow: 0 0 10px rgba(121, 192, 255, 0.4); }
+  }
+  .island-card.winner .island-id {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(63, 185, 80, 0.3);
+  }
+  .island-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .island-strategy {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .island-psnr {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--cyan);
+    margin-top: 4px;
+  }
+  .island-psnr.good { color: var(--green); }
+  .island-psnr.bad { color: var(--red); }
+  .island-status {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+  .island-summary {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    line-height: 1.4;
+    max-height: 60px;
+    overflow: hidden;
+  }
+
+  /* ── Agent Mini-Terminal on Island Cards ── */
+  .island-terminal {
+    max-height: 0;
+    overflow: hidden;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 9.5px;
+    line-height: 1.5;
+    color: var(--text-dim);
+    background: rgba(0, 0, 0, 0.15);
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-top: 4px;
+    border-radius: 4px;
+    position: relative;
+  }
+  .island-card.improving .island-terminal,
+  .island-card.training .island-terminal,
+  .island-card.debugging .island-terminal {
+    max-height: 56px;
+    border: 1px solid var(--border);
+    padding: 2px 0;
+  }
+  .island-terminal::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 10px;
+    background: linear-gradient(transparent, rgba(13, 17, 23, 0.8));
+    pointer-events: none;
+  }
+  .island-term-line {
+    padding: 0 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    animation: itermIn 0.2s ease-out;
+  }
+  @keyframes itermIn {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .island-term-line .it-tool { color: var(--yellow); font-weight: 600; }
+  .island-term-line .it-path { color: var(--text-dim); }
+
+  /* ── Agent Working Indicator ── */
+  .island-agent-bar {
+    display: none;
+    margin-top: 6px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-dim);
+    justify-content: space-between;
+  }
+  .island-card.improving .island-agent-bar,
+  .island-card.training .island-agent-bar,
+  .island-card.debugging .island-agent-bar {
+    display: flex;
+    background: rgba(121, 192, 255, 0.06);
+    border: 1px solid var(--border);
+  }
+  .island-agent-bar .iab-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--cyan);
+    animation: iabPulse 1.5s infinite;
+    margin-right: 4px;
+    align-self: center;
+  }
+  @keyframes iabPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .island-card.debugging .island-agent-bar .iab-dot { background: var(--orange); }
+  .island-card.training .island-agent-bar .iab-dot { background: var(--cyan); }
+
+  /* ── Island Network Canvas ── */
+  #island-network-card { margin-bottom: 16px; }
+  #island-network-area {
+    position: relative;
+    height: 220px;
+    background: #060810;
+    overflow: hidden;
+  }
+  #island-network-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  #island-network-area .inet-grid {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      linear-gradient(rgba(56, 68, 100, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56, 68, 100, 0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events: none;
+  }
+
+  /* ── Connectors between rounds ── */
+  .connector-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 32px;
+    flex-shrink: 0;
+  }
+
+  /* ── Winner Banner ── */
+  .winner-banner {
+    display: none;
+    background: linear-gradient(135deg, rgba(63, 185, 80, 0.12), rgba(188, 140, 255, 0.08));
+    border: 1px solid var(--green);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .winner-banner.visible { display: block; }
+  .winner-banner h2 {
+    font-size: 18px;
+    color: var(--green);
+    margin-bottom: 8px;
+  }
+  .winner-banner .psnr-big {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--green);
+  }
+  .winner-banner .strategy-name {
+    font-size: 14px;
+    color: var(--purple);
+    margin-top: 4px;
+  }
+  .winner-banner .winner-path {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: monospace;
+    margin-top: 8px;
+    word-break: break-all;
+  }
+  .winner-banner .winner-summary {
+    font-size: 13px;
+    color: var(--text);
+    margin-top: 12px;
+    text-align: left;
+    white-space: pre-wrap;
+    line-height: 1.5;
+  }
+
+  /* ── Log Panel ── */
+  #log-panel {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 100px);
+  }
+  #log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    min-height: 400px;
+    background: var(--bg);
+  }
+  #log::-webkit-scrollbar { width: 6px; }
+  #log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .log-entry { padding: 2px 0; word-break: break-word; }
+  .log-stage {
+    color: var(--green);
+    font-weight: 600;
+    margin-top: 8px;
+    padding: 4px 10px;
+    background: rgba(63, 185, 80, 0.08);
+    border-left: 3px solid var(--green);
+  }
+  .log-island {
+    color: var(--cyan);
+    padding-left: 12px;
+  }
+  .log-tool {
+    color: var(--yellow);
+    padding-left: 20px;
+    font-size: 11px;
+  }
+  .log-error {
+    color: var(--red);
+    font-weight: 600;
+    padding: 4px 10px;
+    background: rgba(248, 81, 73, 0.08);
+    border-left: 3px solid var(--red);
+  }
+  .log-round {
+    color: var(--purple);
+    font-weight: 600;
+    margin-top: 12px;
+    padding: 6px 10px;
+    background: rgba(188, 140, 255, 0.08);
+    border-left: 3px solid var(--purple);
+  }
+  .log-psnr {
+    color: var(--cyan);
+    padding-left: 12px;
+    font-weight: 600;
+  }
+  .log-eliminated {
+    color: var(--red);
+    padding-left: 12px;
+    opacity: 0.8;
+  }
+  .log-winner {
+    color: var(--green);
+    font-weight: 700;
+    padding: 8px 12px;
+    background: rgba(63, 185, 80, 0.1);
+    border-radius: 6px;
+    margin-top: 8px;
+  }
+  .log-done {
+    color: var(--green);
+    font-weight: 600;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: rgba(63, 185, 80, 0.1);
+    border-radius: 6px;
+  }
+  .log-system { color: var(--text-dim); font-size: 11px; }
+
+  .status-bar {
+    padding: 10px 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+  .status-dot.running {
+    background: var(--green);
+    animation: pulse 1.5s infinite;
+  }
+  .status-dot.error { background: var(--red); }
+  .status-dot.done { background: var(--accent); }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── PSNR Chart ── */
+  .psnr-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    margin-top: 12px;
+  }
+  .psnr-table th {
+    text-align: right;
+    padding: 6px 8px;
+    color: var(--text-dim);
+    font-weight: 500;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+  }
+  .psnr-table th:first-child { text-align: left; }
+  .psnr-table td {
+    padding: 5px 8px;
+    text-align: right;
+    border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+  }
+  .psnr-table td:first-child {
+    text-align: left;
+    color: var(--cyan);
+    font-weight: 600;
+  }
+  .psnr-table tr.eliminated td { opacity: 0.4; text-decoration: line-through; }
+  .psnr-table tr.winner td { color: var(--green); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Splatify Invent</h1>
+  <span class="badge">Evolutionary Tournament</span>
+  <span class="badge">8 Islands &rarr; 4 &rarr; 2 &rarr; 1</span>
+  <span style="margin-left:auto;display:flex;gap:16px;">
+    <a href="/">&larr; Pipeline</a>
+    <a href="/discover" style="color:#3fb950;">Discover</a>
+  </span>
+</header>
+
+<div class="container">
+  <!-- ── Left: Config ── -->
+  <div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.78 4.22a.75.75 0 010 1.06l-5 5a.75.75 0 01-1.06 0l-2.5-2.5a.75.75 0 011.06-1.06L6.25 8.69l4.47-4.47a.75.75 0 011.06 0z"/></svg>
+        Invent Configuration
+      </div>
+      <div class="card-body">
+        <!-- Mode Tabs -->
+        <div style="display:flex;gap:0;margin-bottom:16px;border-radius:6px;overflow:hidden;border:1px solid var(--border);">
+          <button class="mode-tab active" id="tab-impl" onclick="switchMode('impl')"
+            style="flex:1;padding:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;
+                   background:var(--accent);color:white;transition:all 0.15s;">
+            Implementation
+          </button>
+          <button class="mode-tab" id="tab-scene" onclick="switchMode('scene')"
+            style="flex:1;padding:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;
+                   background:var(--bg);color:var(--text-dim);transition:all 0.15s;">
+            Scene-Driven
+          </button>
+        </div>
+
+        <!-- Implementation Mode Fields -->
+        <div id="impl-fields">
+          <label for="arxiv">arXiv URL or ID</label>
+          <input type="text" id="arxiv" placeholder="2312.17561 or https://arxiv.org/abs/..." />
+
+          <label for="impl_path">Implementation path</label>
+          <input type="text" id="impl_path" placeholder="/path/to/generated/20260308_230115_e91a79" />
+        </div>
+
+        <!-- Scene Mode Fields -->
+        <div id="scene-fields" style="display:none;">
+          <label for="scene_description">Scene Description</label>
+          <textarea id="scene_description" rows="3"
+            style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);
+                   border-radius:6px;color:var(--text);font-size:14px;margin-bottom:14px;outline:none;
+                   resize:vertical;font-family:inherit;line-height:1.5;"
+            placeholder="Describe the scene type, e.g.: underwater coral reef with caustics and light scattering through murky water"></textarea>
+
+          <label for="method_name">Method name (optional)</label>
+          <input type="text" id="method_name" placeholder="auto-derived from scene description" />
+        </div>
+
+        <!-- Shared Fields -->
+        <label for="model">Claude Model</label>
+        <select id="model" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);
+                border-radius:6px;color:var(--text);font-size:14px;margin-bottom:14px;outline:none;cursor:pointer;">
+          <option value="sonnet" selected>Sonnet — fast & cost-effective</option>
+          <option value="opus">Opus — best quality</option>
+          <option value="haiku">Haiku — cheapest</option>
+        </select>
+
+        <label for="data_path">Training data path (optional)</label>
+        <input type="text" id="data_path" placeholder="defaults to garden scene" />
+
+        <label for="gpu">GPU ID(s) (comma-separated for parallel)</label>
+        <input type="text" id="gpu" value="0" placeholder="0 or 0,1" />
+
+        <button class="btn btn-primary" id="btn-run" onclick="startInvent()">
+          Launch Evolutionary Tournament
+        </button>
+      </div>
+    </div>
+
+    <!-- PSNR Leaderboard -->
+    <div class="card" id="leaderboard-card" style="display:none;">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 1.75V13.5h13.75a.75.75 0 010 1.5H.75a.75.75 0 01-.75-.75V1.75a.75.75 0 011.5 0zm14.28 2.53a.75.75 0 00-1.06-1.06L10 7.94 7.53 5.47a.75.75 0 00-1.06 0L3.22 8.72a.75.75 0 001.06 1.06L7 7.06l2.47 2.47a.75.75 0 001.06 0l5.25-5.25z"/></svg>
+        PSNR Leaderboard
+      </div>
+      <div class="card-body" style="padding:0;">
+        <table class="psnr-table" id="psnr-table">
+          <thead><tr>
+            <th>Island</th><th>Strategy</th><th>R1</th><th>R2</th><th>R3</th><th>Status</th>
+          </tr></thead>
+          <tbody id="psnr-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Strategy Legend -->
+    <div class="card" style="margin-top:16px;">
+      <div class="card-header">Strategies</div>
+      <div class="card-body" style="padding:10px;">
+        <div id="strategy-legend" style="font-size:11px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Center: Network + Tournament Bracket ── -->
+  <div>
+    <!-- Island Agent Network -->
+    <div class="card" id="island-network-card">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 3.25a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zm5.677-.177L9.573.677A.25.25 0 0110 .854V2.5h1A2.5 2.5 0 0113.5 5v5.628a2.251 2.251 0 11-1.5 0V5a1 1 0 00-1-1h-1v1.646a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354z"/></svg>
+        Island Agent Network
+        <span style="margin-left:auto;font-size:10px;color:var(--text-dim);font-family:monospace;">Live</span>
+      </div>
+      <div id="island-network-area">
+        <div class="inet-grid"></div>
+        <canvas id="island-network-canvas"></canvas>
+      </div>
+    </div>
+
+    <div id="winner-banner" class="winner-banner"></div>
+
+    <div class="card">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 3.75a.25.25 0 01.25-.25h8.5a.25.25 0 01.25.25v8.5a.25.25 0 01-.25.25h-8.5a.25.25 0 01-.25-.25v-8.5zM3.75 2A1.75 1.75 0 002 3.75v8.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0014 12.25v-8.5A1.75 1.75 0 0012.25 2h-8.5z"/></svg>
+        Tournament Bracket
+      </div>
+      <div class="card-body" style="padding:12px; overflow-x:auto;">
+        <div class="bracket" id="bracket">
+          <!-- Round 0: All 8 islands (pre-improvement) -->
+          <div class="round-col" id="round-0">
+            <div class="round-header">Agents <span class="iters">improving</span></div>
+          </div>
+          <div class="connector-col"></div>
+          <!-- Round 1: 2k iters -->
+          <div class="round-col" id="round-1">
+            <div class="round-header">Round 1 <span class="iters">2k iters</span></div>
+          </div>
+          <div class="connector-col"></div>
+          <!-- Round 2: 7k iters -->
+          <div class="round-col" id="round-2">
+            <div class="round-header">Round 2 <span class="iters">7k iters</span></div>
+          </div>
+          <div class="connector-col"></div>
+          <!-- Round 3: 30k iters -->
+          <div class="round-col" id="round-3">
+            <div class="round-header">Round 3 <span class="iters">30k iters</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Right: Log Panel ── -->
+  <div id="log-panel-col">
+    <div class="card" id="log-panel">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.72 3.22a.75.75 0 011.06 0l3.5 3.5a.75.75 0 010 1.06l-3.5 3.5a.75.75 0 01-1.06-1.06L7.69 7.5 4.72 4.28a.75.75 0 010-1.06zm5.5 7.28a.75.75 0 010-1.5h3a.75.75 0 010 1.5h-3z"/></svg>
+        Live Log
+      </div>
+      <div id="log">
+        <div class="log-entry log-system">Ready. Configure and launch the evolutionary tournament.</div>
+      </div>
+      <div class="status-bar">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Idle</span>
+        <span id="token-text" style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan);display:none;"></span>
+        <span style="margin-left:12px" id="elapsed-text"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STRATEGIES = [
+  {id: "loss_engineering", name: "Loss Engineering", emoji: "L", color: "#f0883e"},
+  {id: "densification", name: "Densification", emoji: "D", color: "#58a6ff"},
+  {id: "lr_schedule", name: "LR & Optimization", emoji: "O", color: "#d29922"},
+  {id: "rendering", name: "Rendering", emoji: "R", color: "#79c0ff"},
+  {id: "new_params", name: "New Parameters", emoji: "P", color: "#bc8cff"},
+  {id: "regularization", name: "Regularization", emoji: "G", color: "#3fb950"},
+  {id: "training_schedule", name: "Training Schedule", emoji: "T", color: "#f85149"},
+  {id: "web_inspired", name: "Web-Inspired", emoji: "W", color: "#e6edf3"},
+];
+
+// Scene prior colors (used when in scene mode)
+const SCENE_PRIOR_COLORS = [
+  "#f0883e", "#58a6ff", "#d29922", "#79c0ff",
+  "#bc8cff", "#3fb950", "#f85149", "#e6edf3",
+];
+
+let currentJobId = null;
+let eventSource = null;
+let startTime = null;
+let elapsedTimer = null;
+let currentMode = 'impl';  // 'impl' or 'scene'
+
+// Token tracking
+let totalInputTokens = 0;
+let totalOutputTokens = 0;
+
+// Island state — dynamic strategies for scene mode
+const islands = {};
+const dynamicStrategies = {};  // populated by island_created events in scene mode
+
+const log = document.getElementById('log');
+const btn = document.getElementById('btn-run');
+const dot = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+const elapsedText = document.getElementById('elapsed-text');
+const tokenText = document.getElementById('token-text');
+
+function formatTokens(n) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
+  return String(n);
+}
+
+function updateTokenDisplay() {
+  if (totalInputTokens > 0 || totalOutputTokens > 0) {
+    tokenText.style.display = '';
+    tokenText.textContent = `${formatTokens(totalInputTokens)} in / ${formatTokens(totalOutputTokens)} out`;
+  }
+}
+
+// Populate strategy legend
+const legendEl = document.getElementById('strategy-legend');
+STRATEGIES.forEach((s, i) => {
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:3px 0;';
+  row.innerHTML = `<span style="color:${s.color};font-weight:700;width:14px;text-align:center;">${s.emoji}</span>` +
+    `<span style="color:${s.color}">#${i}</span> ${s.name}`;
+  legendEl.appendChild(row);
+});
+
+function switchMode(mode) {
+  currentMode = mode;
+  document.getElementById('impl-fields').style.display = mode === 'impl' ? '' : 'none';
+  document.getElementById('scene-fields').style.display = mode === 'scene' ? '' : 'none';
+
+  const tabImpl = document.getElementById('tab-impl');
+  const tabScene = document.getElementById('tab-scene');
+  if (mode === 'impl') {
+    tabImpl.style.background = 'var(--accent)';
+    tabImpl.style.color = 'white';
+    tabScene.style.background = 'var(--bg)';
+    tabScene.style.color = 'var(--text-dim)';
+  } else {
+    tabScene.style.background = 'var(--accent)';
+    tabScene.style.color = 'white';
+    tabImpl.style.background = 'var(--bg)';
+    tabImpl.style.color = 'var(--text-dim)';
+  }
+
+  // Update strategy legend title
+  const legendCard = document.getElementById('strategy-legend').closest('.card');
+  const legendHeader = legendCard.querySelector('.card-header');
+  legendHeader.textContent = mode === 'scene' ? 'Physics Priors' : 'Strategies';
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function addLog(html, cls = '') {
+  const div = document.createElement('div');
+  div.className = 'log-entry ' + cls;
+  div.innerHTML = html;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function setStatus(state, text) {
+  dot.className = 'status-dot ' + state;
+  statusText.textContent = text;
+}
+
+function getStrategy(id) {
+  // In scene mode, use dynamically discovered priors; in impl mode, use fixed strategies
+  if (dynamicStrategies[id]) return dynamicStrategies[id];
+  return STRATEGIES[id] || {name: 'Unknown', emoji: '?', color: '#8b949e'};
+}
+
+function createIslandCard(id, strategy) {
+  const s = getStrategy(id);
+  return `
+    <div class="island-card" id="island-${id}-round-0">
+      <div class="island-header">
+        <span class="island-id" style="border-color:${s.color};color:${s.color}">${s.emoji}</span>
+        <div>
+          <div class="island-name">#${id} ${s.name}</div>
+        </div>
+      </div>
+      <div class="island-status" id="island-${id}-status">Pending...</div>
+      <div class="island-psnr" id="island-${id}-psnr-0" style="display:none"></div>
+      <div class="island-terminal" id="island-${id}-terminal"></div>
+      <div class="island-agent-bar" id="island-${id}-agentbar">
+        <span><span class="iab-dot"></span> agent working</span>
+        <span id="island-${id}-tools">0 tools</span>
+      </div>
+      <div class="island-summary" id="island-${id}-summary"></div>
+    </div>`;
+}
+
+function addIslandTerminalLine(id, html) {
+  const term = document.getElementById('island-' + id + '-terminal');
+  if (!term) return;
+  const line = document.createElement('div');
+  line.className = 'island-term-line';
+  line.innerHTML = html;
+  term.appendChild(line);
+  while (term.children.length > 3) term.removeChild(term.firstChild);
+}
+
+function incrementIslandTools(id) {
+  if (!islands[id]) return;
+  islands[id].toolCount = (islands[id].toolCount || 0) + 1;
+  const el = document.getElementById('island-' + id + '-tools');
+  if (el) el.textContent = islands[id].toolCount + ' tools';
+}
+
+function createRoundIslandCard(id, round) {
+  const s = getStrategy(id);
+  return `
+    <div class="island-card" id="island-${id}-round-${round}">
+      <div class="island-header">
+        <span class="island-id" style="border-color:${s.color};color:${s.color}">${s.emoji}</span>
+        <div class="island-name">#${id} ${s.name}</div>
+      </div>
+      <div class="island-psnr" id="island-${id}-psnr-${round}">...</div>
+      <div class="island-status" id="island-${id}-rstatus-${round}">Waiting</div>
+    </div>`;
+}
+
+function updateLeaderboard() {
+  const tbody = document.getElementById('psnr-tbody');
+  if (!tbody) return;
+  const sorted = Object.values(islands).sort((a, b) => (b.psnr || 0) - (a.psnr || 0));
+  tbody.innerHTML = '';
+  sorted.forEach(isl => {
+    const s = getStrategy(isl.id);
+    const cls = isl.status === 'eliminated' ? 'eliminated' : isl.status === 'winner' ? 'winner' : '';
+    const r1 = isl.psnrs[1] ? isl.psnrs[1].toFixed(2) : '-';
+    const r2 = isl.psnrs[2] ? isl.psnrs[2].toFixed(2) : '-';
+    const r3 = isl.psnrs[3] ? isl.psnrs[3].toFixed(2) : '-';
+    const statusLabel = isl.status === 'winner' ? 'WINNER' :
+      isl.status === 'eliminated' ? 'OUT' :
+      isl.status === 'error' ? 'ERR' : isl.status || '-';
+    tbody.innerHTML += `<tr class="${cls}">
+      <td style="color:${s.color || '#8b949e'}">#${isl.id}</td>
+      <td style="font-size:10px">${s.name || ''}</td>
+      <td>${r1}</td><td>${r2}</td><td>${r3}</td>
+      <td style="font-size:10px">${statusLabel}</td>
+    </tr>`;
+  });
+  document.getElementById('leaderboard-card').style.display = 'block';
+}
+
+async function startInvent() {
+  const dataPath = document.getElementById('data_path').value.trim();
+  const gpu = document.getElementById('gpu').value.trim() || '0';
+  const model = document.getElementById('model').value;
+
+  let apiUrl, body;
+
+  if (currentMode === 'scene') {
+    const sceneDesc = document.getElementById('scene_description').value.trim();
+    const methodName = document.getElementById('method_name').value.trim();
+    if (!sceneDesc) {
+      alert('Please enter a scene description.');
+      return;
+    }
+    apiUrl = '/api/invent/scene';
+    body = {scene_description: sceneDesc, data_path: dataPath, gpu, method_name: methodName, model};
+  } else {
+    const arxiv = document.getElementById('arxiv').value.trim();
+    const implPath = document.getElementById('impl_path').value.trim();
+    if (!implPath) {
+      alert('Please enter the implementation path.');
+      return;
+    }
+    apiUrl = '/api/invent/run';
+    body = {arxiv, impl_path: implPath, data_path: dataPath, gpu, model};
+  }
+
+  btn.disabled = true;
+  log.innerHTML = '';
+  totalInputTokens = 0;
+  totalOutputTokens = 0;
+  tokenText.style.display = 'none';
+  // Clear dynamic strategies
+  Object.keys(dynamicStrategies).forEach(k => delete dynamicStrategies[k]);
+  Object.keys(islands).forEach(k => delete islands[k]);
+
+  setStatus('running', currentMode === 'scene' ? 'Researching physics priors...' : 'Starting tournament...');
+  startTime = Date.now();
+  elapsedTimer = setInterval(() => {
+    const s = ((Date.now() - startTime) / 1000).toFixed(0);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    elapsedText.textContent = m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+  }, 1000);
+
+  // Clear bracket
+  for (let r = 0; r <= 3; r++) {
+    const col = document.getElementById('round-' + r);
+    const header = col.querySelector('.round-header');
+    col.innerHTML = '';
+    col.appendChild(header);
+  }
+  document.getElementById('winner-banner').classList.remove('visible');
+  document.getElementById('winner-banner').innerHTML = '';
+
+  // Update round 0 header for scene mode
+  const r0Header = document.getElementById('round-0').querySelector('.round-header');
+  r0Header.innerHTML = currentMode === 'scene'
+    ? 'Agents <span class="iters">physics priors</span>'
+    : 'Agents <span class="iters">improving</span>';
+
+  // Clear strategy legend for scene mode (will be populated by island_created events)
+  if (currentMode === 'scene') {
+    legendEl.innerHTML = '<div style="color:var(--text-dim);padding:4px 0;">Discovering priors...</div>';
+  }
+
+  const modeLabel = currentMode === 'scene' ? 'scene-driven' : 'evolutionary';
+  addLog(`Launching ${modeLabel} tournament...`, 'log-system');
+
+  try {
+    const resp = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    const data = await resp.json();
+    if (data.error) {
+      addLog(escapeHtml(data.error), 'log-error');
+      setStatus('error', 'Failed');
+      btn.disabled = false;
+      clearInterval(elapsedTimer);
+      return;
+    }
+    currentJobId = data.job_id;
+    addLog(`Job <b>${data.job_id}</b>`, 'log-system');
+
+    if (eventSource) eventSource.close();
+    eventSource = new EventSource('/api/invent/events/' + data.job_id);
+    eventSource.onmessage = (ev) => handleEvent(JSON.parse(ev.data));
+    eventSource.onerror = () => {
+      setStatus('error', 'Connection lost');
+      eventSource.close();
+      btn.disabled = false;
+      clearInterval(elapsedTimer);
+    };
+  } catch (err) {
+    addLog(escapeHtml(String(err)), 'log-error');
+    setStatus('error', 'Failed');
+    btn.disabled = false;
+    clearInterval(elapsedTimer);
+  }
+}
+
+function handleEvent(e) {
+  switch (e.type) {
+    case 'stage':
+      setStatus('running', e.stage || 'Working...');
+      addLog(escapeHtml(e.message || ''), 'log-stage');
+      break;
+
+    case 'island_created': {
+      const id = e.island_id;
+      islands[id] = {id, strategy: e.strategy, psnr: 0, psnrs: {}, status: 'pending'};
+
+      // For scene mode, register dynamic strategy with color
+      if (currentMode === 'scene' || (e.strategy_id && e.strategy_id.startsWith('scene_prior_'))) {
+        const color = SCENE_PRIOR_COLORS[id % SCENE_PRIOR_COLORS.length];
+        const emoji = e.strategy.charAt(0).toUpperCase();
+        dynamicStrategies[id] = {
+          id: e.strategy_id || `scene_prior_${id}`,
+          name: e.strategy,
+          emoji: emoji,
+          color: color,
+        };
+        // Update strategy legend
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:3px 0;';
+        row.innerHTML = `<span style="color:${color};font-weight:700;width:14px;text-align:center;">${emoji}</span>` +
+          `<span style="color:${color}">#${id}</span> ${escapeHtml(e.strategy)}`;
+        if (id === 0) legendEl.innerHTML = '';  // Clear "Discovering priors..." placeholder
+        legendEl.appendChild(row);
+      }
+
+      const col = document.getElementById('round-0');
+      col.insertAdjacentHTML('beforeend', createIslandCard(id, e.strategy));
+      break;
+    }
+
+    case 'island_status': {
+      const id = e.island_id;
+      if (islands[id]) islands[id].status = e.status;
+      const card = document.getElementById(`island-${id}-round-0`);
+      if (card) {
+        card.className = 'island-card ' + (e.status || '');
+        const statusEl = document.getElementById(`island-${id}-status`);
+        if (statusEl) statusEl.textContent = e.message || e.status;
+      }
+      if (e.summary) {
+        const sumEl = document.getElementById(`island-${id}-summary`);
+        if (sumEl) sumEl.textContent = e.summary;
+      }
+      addLog(escapeHtml(e.message || ''), 'log-island');
+      break;
+    }
+
+    case 'island_log':
+      addLog(`<span style="color:${getStrategy(e.island_id)?.color || '#8b949e'}">[#${e.island_id}]</span> ${escapeHtml(e.message || '')}`, 'log-island');
+      if (e.island_id !== undefined) {
+        addIslandTerminalLine(e.island_id, escapeHtml((e.message || '').substring(0, 50)));
+      }
+      break;
+
+    case 'island_tool':
+      addLog(`<span style="color:${getStrategy(e.island_id)?.color || '#8b949e'}">[#${e.island_id}]</span> <span style="color:var(--yellow)">${escapeHtml(e.tool)}</span> ${escapeHtml(e.summary || '')}`, 'log-tool');
+      if (e.island_id !== undefined) {
+        addIslandTerminalLine(e.island_id,
+          '<span class="it-tool">' + escapeHtml(e.tool || '') + '</span> <span class="it-path">' + escapeHtml((e.summary || '').substring(0, 35)) + '</span>');
+        incrementIslandTools(e.island_id);
+      }
+      break;
+
+    case 'island_error': {
+      const id = e.island_id;
+      if (islands[id]) { islands[id].status = 'error'; islands[id].psnr = 0; }
+      const card = document.getElementById(`island-${id}-round-0`);
+      if (card) card.className = 'island-card error';
+      addLog(escapeHtml(e.message || ''), 'log-error');
+      updateLeaderboard();
+      break;
+    }
+
+    case 'island_tokens': {
+      // Per-island token update — recalc cumulative from all islands
+      const id = e.island_id;
+      if (islands[id]) {
+        islands[id].inputTokens = e.input_tokens || 0;
+        islands[id].outputTokens = e.output_tokens || 0;
+      }
+      totalInputTokens = Object.values(islands).reduce((s, i) => s + (i.inputTokens || 0), 0);
+      totalOutputTokens = Object.values(islands).reduce((s, i) => s + (i.outputTokens || 0), 0);
+      updateTokenDisplay();
+      break;
+    }
+
+    case 'tokens_update':
+      totalInputTokens = e.input_tokens || totalInputTokens;
+      totalOutputTokens = e.output_tokens || totalOutputTokens;
+      updateTokenDisplay();
+      break;
+
+    case 'round_start':
+      setStatus('running', e.label || 'Training...');
+      addLog(escapeHtml(e.message || ''), 'log-round');
+      break;
+
+    case 'island_psnr': {
+      const id = e.island_id;
+      const round = e.round;
+      if (islands[id]) {
+        islands[id].psnr = e.psnr;
+        islands[id].psnrs[round] = e.psnr;
+      }
+      // Add card to round column
+      const col = document.getElementById('round-' + round);
+      if (col && !document.getElementById(`island-${id}-round-${round}`)) {
+        col.insertAdjacentHTML('beforeend', createRoundIslandCard(id, round));
+      }
+      const psnrEl = document.getElementById(`island-${id}-psnr-${round}`);
+      if (psnrEl) {
+        psnrEl.textContent = e.psnr.toFixed(2) + ' dB';
+        psnrEl.classList.toggle('good', e.psnr >= 25);
+      }
+      const rstatEl = document.getElementById(`island-${id}-rstatus-${round}`);
+      if (rstatEl) rstatEl.textContent = 'Trained';
+      addLog(escapeHtml(e.message || ''), 'log-psnr');
+      updateLeaderboard();
+      break;
+    }
+
+    case 'island_eliminated': {
+      const id = e.island_id;
+      const round = e.round;
+      if (islands[id]) islands[id].status = 'eliminated';
+      // Mark all cards for this island as eliminated
+      for (let r = 0; r <= 3; r++) {
+        const card = document.getElementById(`island-${id}-round-${r}`);
+        if (card) card.className = 'island-card eliminated';
+      }
+      addLog(escapeHtml(e.message || ''), 'log-eliminated');
+      updateLeaderboard();
+      break;
+    }
+
+    case 'round_result':
+      addLog(escapeHtml(e.message || ''), 'log-round');
+      break;
+
+    case 'winner': {
+      const id = e.island_id;
+      if (islands[id]) islands[id].status = 'winner';
+      for (let r = 0; r <= 3; r++) {
+        const card = document.getElementById(`island-${id}-round-${r}`);
+        if (card) card.className = 'island-card winner';
+      }
+      // Show winner banner
+      const banner = document.getElementById('winner-banner');
+      banner.innerHTML = `
+        <h2>Tournament Winner</h2>
+        <div class="psnr-big">${(e.psnr || 0).toFixed(2)} dB</div>
+        <div class="strategy-name">Island #${id} — ${escapeHtml(e.strategy || '')}</div>
+        <div class="winner-path">${escapeHtml(e.method_path || '')}</div>
+        ${e.improvement_summary ? `<div class="winner-summary">${escapeHtml(e.improvement_summary)}</div>` : ''}
+      `;
+      banner.classList.add('visible');
+      addLog(escapeHtml(e.message || ''), 'log-winner');
+      updateLeaderboard();
+      break;
+    }
+
+    case 'error':
+      addLog(escapeHtml(e.message || ''), 'log-error');
+      setStatus('error', 'Error');
+      break;
+
+    case 'done': {
+      if (e.total_input_tokens) totalInputTokens = e.total_input_tokens;
+      if (e.total_output_tokens) totalOutputTokens = e.total_output_tokens;
+      updateTokenDisplay();
+      const tokenSummary = (totalInputTokens || totalOutputTokens)
+        ? ` | Tokens: ${formatTokens(totalInputTokens)} in / ${formatTokens(totalOutputTokens)} out`
+        : '';
+      addLog(escapeHtml(e.message || 'Tournament complete!') + tokenSummary, 'log-done');
+      setStatus('done', 'Complete');
+      if (eventSource) eventSource.close();
+      btn.disabled = false;
+      clearInterval(elapsedTimer);
+      break;
+    }
+
+    case 'heartbeat':
+      break;
+
+    default:
+      if (e.message) addLog(escapeHtml(e.message), 'log-system');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LIVE ISLAND NETWORK CANVAS
+// ═══════════════════════════════════════════════════════════════
+
+const inetCanvas = document.getElementById('island-network-canvas');
+const inetCtx = inetCanvas ? inetCanvas.getContext('2d') : null;
+let inetPositions = {};
+
+function resizeInetCanvas() {
+  const area = document.getElementById('island-network-area');
+  if (!area || !inetCanvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = area.offsetWidth, h = area.offsetHeight;
+  inetCanvas.width = w * dpr;
+  inetCanvas.height = h * dpr;
+  inetCanvas.style.width = w + 'px';
+  inetCanvas.style.height = h + 'px';
+  inetCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function calcInetPositions(w, h) {
+  const cx = w / 2, cy = h / 2;
+  const ids = Object.keys(islands).map(Number).sort((a,b) => a - b);
+  const count = ids.length || 8;
+  const rx = Math.min(w * 0.38, 200);
+  const ry = Math.min(h * 0.36, 80);
+  const start = -Math.PI / 2;
+  ids.forEach((id, i) => {
+    const a = start + (i / count) * Math.PI * 2;
+    inetPositions[id] = { x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) };
+  });
+  inetPositions._hub = { x: cx, y: cy };
+}
+
+function drawInetFrame(ts) {
+  if (!inetCtx || !inetCanvas.width) { requestAnimationFrame(drawInetFrame); return; }
+  const area = document.getElementById('island-network-area');
+  const w = area ? area.offsetWidth : 600;
+  const h = area ? area.offsetHeight : 220;
+  inetCtx.clearRect(0, 0, w, h);
+
+  const ids = Object.keys(islands).map(Number).sort((a,b) => a - b);
+  if (ids.length === 0) {
+    // No islands yet — show waiting state
+    inetCtx.font = '500 12px -apple-system,sans-serif';
+    inetCtx.textAlign = 'center';
+    inetCtx.fillStyle = '#475569';
+    inetCtx.fillText('Waiting for islands...', w/2, h/2);
+    requestAnimationFrame(drawInetFrame);
+    return;
+  }
+
+  calcInetPositions(w, h);
+  const hub = inetPositions._hub;
+
+  // Draw connections and nodes for each island
+  ids.forEach(id => {
+    const pos = inetPositions[id];
+    if (!pos) return;
+    const isl = islands[id] || {};
+    const st = isl.status || 'pending';
+    const s = getStrategy(id);
+    const color = s.color || '#8b949e';
+    const isWorking = ['improving','training','debugging'].includes(st);
+    const isDone = ['improved','winner'].includes(st);
+    const isElim = st === 'eliminated';
+    const isError = st === 'error';
+
+    // Connection line
+    inetCtx.beginPath();
+    inetCtx.moveTo(hub.x, hub.y);
+    inetCtx.lineTo(pos.x, pos.y);
+    if (isWorking) {
+      inetCtx.strokeStyle = color + '70';
+      inetCtx.lineWidth = 2;
+      inetCtx.setLineDash([]);
+    } else if (isDone) {
+      inetCtx.strokeStyle = 'rgba(34,197,94,0.35)';
+      inetCtx.lineWidth = 1.5;
+      inetCtx.setLineDash([]);
+    } else if (isElim || isError) {
+      inetCtx.strokeStyle = 'rgba(248,81,73,0.15)';
+      inetCtx.lineWidth = 1;
+      inetCtx.setLineDash([3, 5]);
+    } else {
+      inetCtx.strokeStyle = 'rgba(56,68,100,0.18)';
+      inetCtx.lineWidth = 1;
+      inetCtx.setLineDash([4, 6]);
+    }
+    inetCtx.stroke();
+    inetCtx.setLineDash([]);
+
+    // Flowing particles for working islands
+    if (isWorking) {
+      const t = (ts % 1800) / 1800;
+      for (let p = 0; p < 3; p++) {
+        const pt = (t + p * 0.33) % 1;
+        const px = hub.x + (pos.x - hub.x) * pt;
+        const py = hub.y + (pos.y - hub.y) * pt;
+        const sz = 2.5 - pt;
+        const al = Math.floor((1 - pt * 0.6) * 200);
+        inetCtx.beginPath();
+        inetCtx.arc(px, py, sz, 0, Math.PI * 2);
+        inetCtx.fillStyle = color + al.toString(16).padStart(2,'0');
+        inetCtx.fill();
+      }
+    }
+
+    // Island node circle
+    const nr = 16;
+    const nodeAlpha = isElim ? 0.3 : 1;
+    inetCtx.globalAlpha = nodeAlpha;
+    inetCtx.beginPath();
+    inetCtx.arc(pos.x, pos.y, nr, 0, Math.PI * 2);
+    if (isWorking) {
+      inetCtx.fillStyle = color + '20';
+      inetCtx.fill();
+      inetCtx.strokeStyle = color;
+      inetCtx.lineWidth = 2;
+      inetCtx.stroke();
+    } else if (isDone) {
+      inetCtx.fillStyle = 'rgba(34,197,94,0.12)';
+      inetCtx.fill();
+      inetCtx.strokeStyle = 'rgba(34,197,94,0.45)';
+      inetCtx.lineWidth = 1.5;
+      inetCtx.stroke();
+    } else if (isElim) {
+      inetCtx.fillStyle = 'rgba(248,81,73,0.08)';
+      inetCtx.fill();
+      inetCtx.strokeStyle = 'rgba(248,81,73,0.3)';
+      inetCtx.lineWidth = 1;
+      inetCtx.stroke();
+      // X mark
+      inetCtx.beginPath();
+      inetCtx.moveTo(pos.x-5, pos.y-5);
+      inetCtx.lineTo(pos.x+5, pos.y+5);
+      inetCtx.moveTo(pos.x+5, pos.y-5);
+      inetCtx.lineTo(pos.x-5, pos.y+5);
+      inetCtx.strokeStyle = 'rgba(248,81,73,0.5)';
+      inetCtx.lineWidth = 1.5;
+      inetCtx.stroke();
+    } else {
+      inetCtx.fillStyle = 'rgba(16,22,36,0.7)';
+      inetCtx.fill();
+      inetCtx.strokeStyle = 'rgba(56,68,100,0.25)';
+      inetCtx.lineWidth = 1;
+      inetCtx.stroke();
+    }
+
+    // Label inside node
+    if (!isElim) {
+      inetCtx.font = '700 10px -apple-system,sans-serif';
+      inetCtx.textAlign = 'center';
+      inetCtx.textBaseline = 'middle';
+      inetCtx.fillStyle = isWorking ? '#fff' : isDone ? '#22c55e' : color;
+      inetCtx.fillText(s.emoji || '#', pos.x, pos.y);
+    }
+
+    // Name + PSNR below
+    inetCtx.font = '600 8px -apple-system,sans-serif';
+    inetCtx.fillStyle = isWorking ? color : isDone ? '#22c55e' : '#475569';
+    inetCtx.fillText('#' + id, pos.x, pos.y + nr + 10);
+    if (isl.psnr) {
+      inetCtx.font = '700 8px monospace';
+      inetCtx.fillStyle = isl.psnr >= 25 ? '#22c55e' : '#eab308';
+      inetCtx.fillText(isl.psnr.toFixed(1) + 'dB', pos.x, pos.y + nr + 20);
+    }
+    inetCtx.globalAlpha = 1;
+  });
+
+  // Orchestrator hub
+  const hr = 22;
+  const glowR = hr + 6 + Math.sin(ts / 600) * 2;
+  inetCtx.beginPath();
+  inetCtx.arc(hub.x, hub.y, glowR, 0, Math.PI * 2);
+  inetCtx.strokeStyle = 'rgba(6,182,212,0.12)';
+  inetCtx.lineWidth = 1;
+  inetCtx.stroke();
+  inetCtx.beginPath();
+  inetCtx.arc(hub.x, hub.y, hr, 0, Math.PI * 2);
+  const grad = inetCtx.createRadialGradient(hub.x-3, hub.y-3, 0, hub.x, hub.y, hr);
+  grad.addColorStop(0, 'rgba(6,182,212,0.2)');
+  grad.addColorStop(1, 'rgba(168,85,247,0.1)');
+  inetCtx.fillStyle = grad;
+  inetCtx.fill();
+  inetCtx.strokeStyle = 'rgba(6,182,212,0.45)';
+  inetCtx.lineWidth = 2;
+  inetCtx.stroke();
+  inetCtx.font = '800 8px -apple-system,sans-serif';
+  inetCtx.textAlign = 'center';
+  inetCtx.textBaseline = 'middle';
+  inetCtx.fillStyle = '#06b6d4';
+  inetCtx.fillText('ORCH', hub.x, hub.y - 2);
+  inetCtx.font = '500 7px -apple-system,sans-serif';
+  inetCtx.fillStyle = '#0891b2';
+  inetCtx.fillText('invent', hub.x, hub.y + 8);
+
+  requestAnimationFrame(drawInetFrame);
+}
+
+window.addEventListener('resize', resizeInetCanvas);
+if (inetCanvas) {
+  resizeInetCanvas();
+  requestAnimationFrame(drawInetFrame);
+}
+</script>
+</body>
+</html>

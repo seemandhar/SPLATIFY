@@ -1,0 +1,1724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Splatify — Multi-Agent Pipeline Demo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  :root {
+    --bg: #06080d;
+    --bg2: #0a0e17;
+    --surface: rgba(16, 22, 36, 0.85);
+    --surface-solid: #101624;
+    --border: rgba(56, 68, 100, 0.4);
+    --border-bright: rgba(88, 120, 180, 0.5);
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --text-muted: #475569;
+    --accent: #3b82f6;
+    --accent-glow: rgba(59, 130, 246, 0.3);
+    --green: #22c55e;
+    --green-glow: rgba(34, 197, 94, 0.3);
+    --yellow: #eab308;
+    --yellow-glow: rgba(234, 179, 8, 0.2);
+    --red: #ef4444;
+    --purple: #a855f7;
+    --purple-glow: rgba(168, 85, 247, 0.3);
+    --cyan: #06b6d4;
+    --cyan-glow: rgba(6, 182, 212, 0.3);
+    --orange: #f97316;
+    --orange-glow: rgba(249, 115, 22, 0.3);
+    --pink: #ec4899;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  /* ── Background Canvas ── */
+  #bg-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+  }
+
+  /* ── Grid Overlay ── */
+  .grid-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    background-image:
+      linear-gradient(rgba(56, 68, 100, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56, 68, 100, 0.07) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* ── Top Bar ── */
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    padding: 0 28px;
+    background: linear-gradient(180deg, rgba(6, 8, 13, 0.95) 0%, rgba(6, 8, 13, 0.7) 100%);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .topbar-logo {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--orange), var(--purple));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 16px; color: #fff;
+    box-shadow: 0 0 20px var(--orange-glow);
+  }
+
+  .topbar-title {
+    font-size: 18px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--orange), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.3px;
+  }
+
+  .topbar-subtitle {
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 3px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    margin-left: 8px;
+  }
+
+  .topbar-stats {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .stat-value.tokens { color: var(--purple); }
+  .stat-value.cost { color: var(--green); }
+  .stat-value.elapsed { color: var(--cyan); }
+
+  /* ── Pipeline Progress Bar ── */
+  .pipeline-progress {
+    position: fixed;
+    top: 56px; left: 0; right: 0;
+    z-index: 99;
+    height: 3px;
+    background: rgba(56, 68, 100, 0.2);
+  }
+
+  .pipeline-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--orange), var(--purple), var(--cyan));
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 12px var(--purple-glow), 0 0 30px rgba(168, 85, 247, 0.1);
+    position: relative;
+  }
+
+  .pipeline-progress-bar::after {
+    content: '';
+    position: absolute;
+    right: 0; top: -2px;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 10px var(--accent), 0 0 20px var(--accent-glow);
+  }
+
+  /* ── Main Layout ── */
+  .main-layout {
+    position: fixed;
+    top: 59px; left: 0; right: 0; bottom: 0;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: 280px 1fr 340px;
+    grid-template-rows: 1fr auto;
+    gap: 0;
+  }
+
+  /* ── Left: Pipeline Flow ── */
+  .pipeline-sidebar {
+    grid-row: 1 / 3;
+    border-right: 1px solid var(--border);
+    background: rgba(6, 8, 13, 0.8);
+    backdrop-filter: blur(10px);
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .pipeline-sidebar::-webkit-scrollbar { width: 4px; }
+  .pipeline-sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .sidebar-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .pipeline-step {
+    position: relative;
+    padding: 12px 14px;
+    margin-bottom: 4px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: default;
+  }
+
+  .pipeline-step::before {
+    content: '';
+    position: absolute;
+    left: 26px;
+    top: 100%;
+    width: 2px;
+    height: 4px;
+    background: var(--border);
+    z-index: -1;
+  }
+
+  .pipeline-step:last-child::before { display: none; }
+
+  .pipeline-step.idle {
+    background: transparent;
+    border-color: transparent;
+  }
+
+  .pipeline-step.active {
+    background: rgba(59, 130, 246, 0.08);
+    border-color: var(--accent);
+    box-shadow: 0 0 20px var(--accent-glow), inset 0 0 20px rgba(59, 130, 246, 0.05);
+  }
+
+  .pipeline-step.done {
+    background: rgba(34, 197, 94, 0.06);
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+
+  .pipeline-step.error {
+    background: rgba(239, 68, 68, 0.06);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .step-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    transition: all 0.4s;
+  }
+
+  .pipeline-step.idle .step-icon {
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+
+  .pipeline-step.active .step-icon {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 15px var(--accent-glow);
+    animation: iconPulse 2s infinite;
+  }
+
+  .pipeline-step.done .step-icon {
+    background: var(--green);
+    color: #fff;
+    box-shadow: 0 0 10px var(--green-glow);
+  }
+
+  @keyframes iconPulse {
+    0%, 100% { box-shadow: 0 0 15px var(--accent-glow); }
+    50% { box-shadow: 0 0 25px var(--accent-glow), 0 0 40px rgba(59, 130, 246, 0.15); }
+  }
+
+  .step-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .step-name {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+
+  .step-desc {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .step-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 4px;
+    display: inline-block;
+  }
+
+  .pipeline-step.active .step-status {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent);
+  }
+
+  .pipeline-step.done .step-status {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--green);
+  }
+
+  .step-connector {
+    width: 2px;
+    height: 12px;
+    margin: 0 auto;
+    background: var(--border);
+    position: relative;
+  }
+
+  .step-connector.active {
+    background: linear-gradient(180deg, var(--accent), var(--border));
+  }
+
+  .step-connector.done {
+    background: var(--green);
+  }
+
+  /* ── Center: Agent Canvas Area ── */
+  .canvas-area {
+    position: relative;
+    overflow: hidden;
+  }
+
+  #agent-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+
+  /* Floating agent cards on the canvas */
+  .agent-card {
+    position: absolute;
+    width: 220px;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0.6;
+    transform: scale(0.95);
+    z-index: 20;
+  }
+
+  .agent-card.active {
+    opacity: 1;
+    transform: scale(1);
+    border-color: var(--accent);
+    box-shadow: 0 0 30px var(--accent-glow), 0 4px 30px rgba(0,0,0,0.3);
+  }
+
+  .agent-card.done {
+    opacity: 0.85;
+    transform: scale(0.97);
+    border-color: rgba(34, 197, 94, 0.4);
+    box-shadow: 0 0 15px var(--green-glow);
+  }
+
+  .agent-card-header {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .agent-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    flex-shrink: 0;
+    transition: all 0.4s;
+  }
+
+  .agent-card.active .agent-dot {
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: dotPulse 1.5s infinite;
+  }
+
+  .agent-card.done .agent-dot {
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+  }
+
+  @keyframes dotPulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--accent); }
+    50% { opacity: 0.5; box-shadow: 0 0 15px var(--accent); }
+  }
+
+  .agent-card-name {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .agent-card.active .agent-card-name { color: var(--accent); }
+  .agent-card.done .agent-card-name { color: var(--green); }
+
+  .agent-card-model {
+    margin-left: auto;
+    font-size: 9px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    padding: 1px 5px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 3px;
+  }
+
+  .agent-card-terminal {
+    height: 90px;
+    overflow: hidden;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    line-height: 1.6;
+    padding: 8px 12px;
+    color: var(--text-dim);
+    position: relative;
+  }
+
+  .agent-card.active .agent-card-terminal {
+    color: var(--text);
+  }
+
+  .agent-card-terminal::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 25px;
+    background: linear-gradient(transparent, var(--surface-solid));
+    pointer-events: none;
+  }
+
+  .term-line {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0;
+    animation: termFadeIn 0.3s forwards;
+  }
+
+  .term-line .prompt { color: var(--cyan); }
+  .term-line .keyword { color: var(--purple); }
+  .term-line .string { color: var(--green); }
+  .term-line .comment { color: var(--text-muted); font-style: italic; }
+  .term-line .fn { color: var(--yellow); }
+  .term-line .op { color: var(--orange); }
+
+  @keyframes termFadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .agent-card-footer {
+    padding: 6px 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 9px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+  }
+
+  .agent-card.active .agent-card-footer .agent-time { color: var(--cyan); }
+
+  /* ── Orchestrator Hub ── */
+  .orchestrator-hub {
+    position: absolute;
+    z-index: 25;
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, rgba(249, 115, 22, 0.2), rgba(168, 85, 247, 0.15), transparent);
+    border: 2px solid rgba(168, 85, 247, 0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 40px var(--purple-glow), 0 0 80px rgba(168, 85, 247, 0.08);
+    animation: hubGlow 3s infinite;
+    backdrop-filter: blur(10px);
+  }
+
+  .orchestrator-hub .hub-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--purple);
+    font-weight: 700;
+  }
+
+  .orchestrator-hub .hub-icon {
+    font-size: 24px;
+    margin-bottom: 4px;
+    filter: drop-shadow(0 0 8px var(--purple-glow));
+  }
+
+  @keyframes hubGlow {
+    0%, 100% { box-shadow: 0 0 40px var(--purple-glow), 0 0 80px rgba(168, 85, 247, 0.08); }
+    50% { box-shadow: 0 0 60px var(--purple-glow), 0 0 120px rgba(168, 85, 247, 0.12); }
+  }
+
+  /* ── Right: Live Log ── */
+  .log-sidebar {
+    grid-row: 1 / 3;
+    border-left: 1px solid var(--border);
+    background: rgba(6, 8, 13, 0.85);
+    backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .log-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+
+  .log-header .live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--red);
+    animation: livePulse 1s infinite;
+  }
+
+  @keyframes livePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .log-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.7;
+  }
+
+  .log-body::-webkit-scrollbar { width: 4px; }
+  .log-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .log-entry {
+    padding: 2px 0;
+    opacity: 0;
+    animation: logFadeIn 0.3s forwards;
+  }
+
+  @keyframes logFadeIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .log-entry.stage {
+    color: var(--green);
+    font-weight: 600;
+    padding: 6px 10px;
+    margin: 6px 0;
+    background: rgba(34, 197, 94, 0.06);
+    border-left: 3px solid var(--green);
+    border-radius: 0 6px 6px 0;
+  }
+
+  .log-entry.agent {
+    color: var(--cyan);
+    font-weight: 600;
+    padding: 4px 10px;
+    margin: 4px 0;
+    background: rgba(6, 182, 212, 0.06);
+    border-left: 3px solid var(--cyan);
+    border-radius: 0 6px 6px 0;
+  }
+
+  .log-entry.tool {
+    color: var(--yellow);
+    padding-left: 14px;
+    font-size: 10px;
+  }
+
+  .log-entry.tool .tool-name { font-weight: 600; color: var(--yellow); }
+  .log-entry.tool .tool-path { color: var(--text-dim); }
+
+  .log-entry.thinking {
+    color: var(--purple);
+    padding-left: 14px;
+    font-style: italic;
+    opacity: 0.7;
+    font-size: 10px;
+  }
+
+  .log-entry.text {
+    color: var(--text);
+    padding-left: 14px;
+  }
+
+  .log-entry.result {
+    color: var(--green);
+    font-weight: 600;
+    padding: 8px 12px;
+    margin: 8px 0;
+    background: rgba(34, 197, 94, 0.08);
+    border-radius: 8px;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+  }
+
+  .log-entry.error {
+    color: var(--red);
+    padding: 4px 10px;
+    background: rgba(239, 68, 68, 0.06);
+    border-left: 3px solid var(--red);
+  }
+
+  .log-entry.system {
+    color: var(--text-muted);
+    font-size: 10px;
+  }
+
+  .log-timestamp {
+    color: var(--text-muted);
+    font-size: 9px;
+    margin-right: 6px;
+    opacity: 0.7;
+  }
+
+  /* ── Bottom Agent Summary Bar ── */
+  .bottom-bar {
+    position: fixed;
+    bottom: 0; left: 280px; right: 340px;
+    z-index: 50;
+    height: 64px;
+    background: rgba(6, 8, 13, 0.9);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 20px;
+  }
+
+  .bottom-agent {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 600;
+    transition: all 0.4s;
+    white-space: nowrap;
+  }
+
+  .bottom-agent.active {
+    border-color: var(--accent);
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent);
+    box-shadow: 0 0 15px var(--accent-glow);
+  }
+
+  .bottom-agent.done {
+    border-color: rgba(34, 197, 94, 0.3);
+    color: var(--green);
+  }
+
+  .bottom-agent .ba-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    transition: all 0.4s;
+  }
+
+  .bottom-agent.active .ba-dot {
+    background: var(--accent);
+    animation: dotPulse 1.5s infinite;
+  }
+
+  .bottom-agent.done .ba-dot {
+    background: var(--green);
+  }
+
+  .bottom-agent .ba-arrow {
+    color: var(--text-muted);
+    font-size: 10px;
+    margin: 0 2px;
+  }
+
+  /* ── Completion Overlay ── */
+  .completion-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(6, 8, 13, 0.85);
+    backdrop-filter: blur(20px);
+  }
+
+  .completion-overlay.visible {
+    display: flex;
+    animation: overlayFadeIn 0.8s forwards;
+  }
+
+  @keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .completion-card {
+    text-align: center;
+    padding: 50px 80px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: 0 0 60px rgba(34, 197, 94, 0.15);
+    animation: cardPop 0.6s 0.3s backwards;
+  }
+
+  @keyframes cardPop {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .completion-icon {
+    font-size: 56px;
+    margin-bottom: 20px;
+    animation: checkBounce 0.5s 0.8s backwards;
+  }
+
+  @keyframes checkBounce {
+    from { transform: scale(0); }
+    50% { transform: scale(1.3); }
+    to { transform: scale(1); }
+  }
+
+  .completion-title {
+    font-size: 28px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--green), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+  }
+
+  .completion-stats {
+    display: flex;
+    gap: 30px;
+    margin-top: 24px;
+    justify-content: center;
+  }
+
+  .completion-stat {
+    text-align: center;
+  }
+
+  .completion-stat .cs-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .completion-stat .cs-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .completion-files {
+    margin-top: 28px;
+    text-align: left;
+    max-height: 150px;
+    overflow-y: auto;
+    padding: 12px 16px;
+    background: var(--bg2);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+
+  .completion-files .cf-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+
+  .completion-files .cf-file {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    padding: 2px 0;
+  }
+
+  .restart-btn {
+    margin-top: 30px;
+    padding: 12px 32px;
+    background: linear-gradient(135deg, var(--orange), var(--purple));
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .restart-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px var(--purple-glow);
+  }
+</style>
+</head>
+<body>
+
+<!-- Background canvas for particle effects -->
+<canvas id="bg-canvas"></canvas>
+<div class="grid-overlay"></div>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">S</div>
+    <span class="topbar-title">Splatify</span>
+    <span class="topbar-subtitle">Multi-Agent Pipeline</span>
+  </div>
+  <div class="topbar-stats">
+    <div class="stat-item">
+      <span class="stat-label">Agents</span>
+      <span class="stat-value" id="stat-agents">0 / 8</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Tool Calls</span>
+      <span class="stat-value" id="stat-tools">0</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Tokens</span>
+      <span class="stat-value tokens" id="stat-tokens">0</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Est. Cost</span>
+      <span class="stat-value cost" id="stat-cost">$0.00</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Elapsed</span>
+      <span class="stat-value elapsed" id="stat-elapsed">00:00</span>
+    </div>
+  </div>
+</div>
+
+<!-- Pipeline progress bar -->
+<div class="pipeline-progress">
+  <div class="pipeline-progress-bar" id="progress-bar"></div>
+</div>
+
+<!-- Main Layout -->
+<div class="main-layout">
+
+  <!-- Left: Pipeline Steps -->
+  <div class="pipeline-sidebar">
+    <div class="sidebar-title">Pipeline Flow</div>
+    <div id="pipeline-steps"></div>
+  </div>
+
+  <!-- Center: Canvas with agent cards -->
+  <div class="canvas-area">
+    <canvas id="agent-canvas"></canvas>
+    <div class="orchestrator-hub" id="orchestrator-hub">
+      <div class="hub-icon">&#x2B22;</div>
+      <div class="hub-label">Orchestrator</div>
+    </div>
+    <!-- Agent cards are injected here -->
+    <div id="agent-cards-container"></div>
+  </div>
+
+  <!-- Right: Live Log -->
+  <div class="log-sidebar">
+    <div class="log-header">
+      <div class="live-dot"></div>
+      Live Agent Stream
+    </div>
+    <div class="log-body" id="log-body"></div>
+  </div>
+</div>
+
+<!-- Bottom Agent Bar -->
+<div class="bottom-bar" id="bottom-bar"></div>
+
+<!-- Completion Overlay -->
+<div class="completion-overlay" id="completion-overlay">
+  <div class="completion-card">
+    <div class="completion-icon">&#x2705;</div>
+    <div class="completion-title">Pipeline Complete</div>
+    <div style="color: var(--text-dim); font-size: 14px;">All 8 agents finished successfully</div>
+    <div class="completion-stats">
+      <div class="completion-stat">
+        <div class="cs-value tokens" id="final-tokens">3.2M</div>
+        <div class="cs-label">Tokens</div>
+      </div>
+      <div class="completion-stat">
+        <div class="cs-value cost" id="final-cost">$4.87</div>
+        <div class="cs-label">Cost</div>
+      </div>
+      <div class="completion-stat">
+        <div class="cs-value elapsed" id="final-elapsed">4:32</div>
+        <div class="cs-label">Duration</div>
+      </div>
+      <div class="completion-stat">
+        <div class="cs-value" style="color: var(--green)" id="final-files">12</div>
+        <div class="cs-label">Files</div>
+      </div>
+    </div>
+    <div class="completion-files">
+      <div class="cf-title">Generated Files</div>
+      <div class="cf-file">dashgaussian/__init__.py</div>
+      <div class="cf-file">dashgaussian/model.py</div>
+      <div class="cf-file">dashgaussian/losses.py</div>
+      <div class="cf-file">dashgaussian/rendering.py</div>
+      <div class="cf-file">dashgaussian/configs.py</div>
+      <div class="cf-file">dashgaussian/datamanager.py</div>
+      <div class="cf-file">pyproject.toml</div>
+      <div class="cf-file">README.md</div>
+    </div>
+    <button class="restart-btn" onclick="restartDemo()">Replay Demo</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// AGENT DEFINITIONS
+// ═══════════════════════════════════════════════════════════════
+
+const AGENTS = [
+  {
+    id: 'parser',
+    name: 'Parser',
+    icon: '&#x1F4C4;',
+    model: 'sonnet',
+    desc: 'PDF extraction & markdown cleanup',
+    color: '#f97316',
+    terminalLines: [
+      { text: '$ mineru parse paper.pdf', type: 'cmd' },
+      { text: 'Extracting 12 pages...', type: 'output' },
+      { text: 'Found 23 equations, 8 figures', type: 'output' },
+      { text: 'Cleaning LaTeX math notation...', type: 'output' },
+      { text: '# 3D Gaussian Splatting with...', type: 'comment' },
+      { text: 'Extracting loss functions...', type: 'output' },
+      { text: 'def L_depth(pred, gt):', type: 'code' },
+      { text: '  return pearson_loss(pred, gt)', type: 'code' },
+      { text: 'Writing cleaned_paper.md', type: 'output' },
+      { text: 'Parser complete: 3,847 lines', type: 'result' },
+    ],
+  },
+  {
+    id: 'planner',
+    name: 'Planner',
+    icon: '&#x1F5FA;',
+    model: 'sonnet',
+    desc: 'Architecture DAG & complexity analysis',
+    color: '#a855f7',
+    terminalLines: [
+      { text: 'Analyzing paper structure...', type: 'output' },
+      { text: 'Complexity: Tier 4 (all ext pts)', type: 'output' },
+      { text: 'Extension points needed:', type: 'comment' },
+      { text: '  populate_modules()', type: 'code' },
+      { text: '  get_outputs()', type: 'code' },
+      { text: '  compute_custom_losses()', type: 'code' },
+      { text: '  split_gaussians()', type: 'code' },
+      { text: 'Building dependency graph...', type: 'output' },
+      { text: '{"model.py": ["losses.py"]}', type: 'code' },
+      { text: 'Writing dag_plan.json', type: 'result' },
+    ],
+  },
+  {
+    id: 'coder',
+    name: 'Coder',
+    icon: '&#x1F4BB;',
+    model: 'opus',
+    desc: 'Code generation from paper + templates',
+    color: '#3b82f6',
+    terminalLines: [
+      { text: 'Reading 20 example methods...', type: 'output' },
+      { text: 'class DashGaussianModel(GSTemplate', type: 'code' },
+      { text: '    ModelConfig):', type: 'code' },
+      { text: '  def populate_modules(self):', type: 'code' },
+      { text: '    self.depth_mlp = MLP(64, 1)', type: 'code' },
+      { text: '    self.normal_est = NormalEst()', type: 'code' },
+      { text: 'Writing model.py (342 lines)', type: 'output' },
+      { text: 'Writing losses.py (156 lines)', type: 'output' },
+      { text: 'Writing rendering.py (89 lines)', type: 'output' },
+      { text: 'Writing configs.py', type: 'result' },
+    ],
+  },
+  {
+    id: 'reviewer',
+    name: 'Reviewer',
+    icon: '&#x1F50D;',
+    model: 'sonnet',
+    desc: 'Code review & API compliance check',
+    color: '#eab308',
+    terminalLines: [
+      { text: 'Reviewing model.py...', type: 'output' },
+      { text: 'Checking SplatfactoModel API...', type: 'output' },
+      { text: '! get_outputs return keys ✓', type: 'comment' },
+      { text: '! gsplat rasterize call ✓', type: 'comment' },
+      { text: '! loss dict structure ✓', type: 'comment' },
+      { text: 'Issue: missing viewmat in cam', type: 'output' },
+      { text: '  Fix: add prepare_camera()', type: 'code' },
+      { text: 'Issue: wrong SH degree range', type: 'output' },
+      { text: '  Fix: clamp to max_sh_degree', type: 'code' },
+      { text: 'Review: 2 issues fixed', type: 'result' },
+    ],
+  },
+  {
+    id: 'validator',
+    name: 'Validator',
+    icon: '&#x2705;',
+    model: 'sonnet',
+    desc: 'Novelty verification vs paper',
+    color: '#22c55e',
+    terminalLines: [
+      { text: 'Checking paper novelties...', type: 'output' },
+      { text: '✓ Depth regularization (Eq. 7)', type: 'comment' },
+      { text: '✓ Normal consistency (Eq. 9)', type: 'comment' },
+      { text: '✓ Opacity decay (Sec. 3.4)', type: 'comment' },
+      { text: '✓ Adaptive densification', type: 'comment' },
+      { text: '✗ Cubemap reflection missing', type: 'output' },
+      { text: '  Adding shading.py cubemap...', type: 'code' },
+      { text: '  cubemap_sample(normals, env)', type: 'code' },
+      { text: 'Gap analysis: 1/6 missing', type: 'output' },
+      { text: 'Validation: 6/6 implemented', type: 'result' },
+    ],
+  },
+  {
+    id: 'integrator',
+    name: 'Integrator',
+    icon: '&#x1F517;',
+    model: 'sonnet',
+    desc: 'Cross-file consistency & wiring',
+    color: '#06b6d4',
+    terminalLines: [
+      { text: 'Checking import graph...', type: 'output' },
+      { text: '  model.py → losses.py ✓', type: 'comment' },
+      { text: '  model.py → rendering.py ✓', type: 'comment' },
+      { text: '  configs.py → model.py ✓', type: 'comment' },
+      { text: 'Verifying MethodSpec wiring...', type: 'output' },
+      { text: '  entry_point: dashgaussian', type: 'code' },
+      { text: '  config: DashGaussianConfig', type: 'code' },
+      { text: 'Checking pyproject.toml...', type: 'output' },
+      { text: '  [project.entry-points] ✓', type: 'comment' },
+      { text: 'Integration: all files wired', type: 'result' },
+    ],
+  },
+  {
+    id: 'tester',
+    name: 'Tester',
+    icon: '&#x1F9EA;',
+    model: 'sonnet',
+    desc: 'Smoke test & pip install validation',
+    color: '#ec4899',
+    terminalLines: [
+      { text: '$ pip install -e .', type: 'cmd' },
+      { text: 'Installing dashgaussian...', type: 'output' },
+      { text: 'Successfully installed', type: 'output' },
+      { text: '$ ns-train dashgaussian \\', type: 'cmd' },
+      { text: '    --max-num-iterations 10', type: 'cmd' },
+      { text: 'Step 1/10 loss=0.8234', type: 'output' },
+      { text: 'Step 5/10 loss=0.4122', type: 'output' },
+      { text: 'Step 10/10 loss=0.2891', type: 'output' },
+      { text: 'Rendering test frame... ✓', type: 'output' },
+      { text: 'Smoke test: PASSED', type: 'result' },
+    ],
+  },
+  {
+    id: 'debugger',
+    name: 'Debugger',
+    icon: '&#x1F41B;',
+    model: 'opus',
+    desc: 'CUDA/gsplat error diagnosis & fix',
+    color: '#ef4444',
+    terminalLines: [
+      { text: 'Scanning for runtime errors...', type: 'output' },
+      { text: '! CUDA shape mismatch at L142', type: 'output' },
+      { text: '  Expected: [N, 3] got [N, 4]', type: 'code' },
+      { text: '  Fix: means[:, :3] slice', type: 'code' },
+      { text: '! gsplat rasterize warning', type: 'output' },
+      { text: '  tile_size must be power of 2', type: 'code' },
+      { text: '  Fix: tile_size=16', type: 'code' },
+      { text: 'Re-running smoke test...', type: 'output' },
+      { text: 'Step 10/10 loss=0.2734 ✓', type: 'output' },
+      { text: 'Debug: all issues resolved', type: 'result' },
+    ],
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+
+let currentStep = -1;
+let toolCalls = 0;
+let tokenCount = 0;
+let costUsd = 0;
+let startTime = 0;
+let elapsedTimer = null;
+let animationFrame = null;
+let particles = [];
+let connections = [];
+let agentPositions = {};
+let hubPos = { x: 0, y: 0 };
+
+// ═══════════════════════════════════════════════════════════════
+// BACKGROUND CANVAS — PARTICLE FIELD
+// ═══════════════════════════════════════════════════════════════
+
+const bgCanvas = document.getElementById('bg-canvas');
+const bgCtx = bgCanvas.getContext('2d');
+let bgParticles = [];
+
+function resizeBgCanvas() {
+  bgCanvas.width = window.innerWidth;
+  bgCanvas.height = window.innerHeight;
+}
+
+function initBgParticles() {
+  bgParticles = [];
+  const count = Math.floor((window.innerWidth * window.innerHeight) / 8000);
+  for (let i = 0; i < count; i++) {
+    bgParticles.push({
+      x: Math.random() * bgCanvas.width,
+      y: Math.random() * bgCanvas.height,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      r: Math.random() * 1.5 + 0.3,
+      alpha: Math.random() * 0.3 + 0.05,
+    });
+  }
+}
+
+function drawBgParticles() {
+  bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+  // Draw faint connections between nearby particles
+  for (let i = 0; i < bgParticles.length; i++) {
+    for (let j = i + 1; j < bgParticles.length; j++) {
+      const dx = bgParticles[i].x - bgParticles[j].x;
+      const dy = bgParticles[i].y - bgParticles[j].y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < 100) {
+        bgCtx.beginPath();
+        bgCtx.moveTo(bgParticles[i].x, bgParticles[i].y);
+        bgCtx.lineTo(bgParticles[j].x, bgParticles[j].y);
+        bgCtx.strokeStyle = `rgba(56, 68, 100, ${0.08 * (1 - d / 100)})`;
+        bgCtx.lineWidth = 0.5;
+        bgCtx.stroke();
+      }
+    }
+  }
+
+  // Draw particles
+  for (const p of bgParticles) {
+    p.x += p.vx;
+    p.y += p.vy;
+    if (p.x < 0) p.x = bgCanvas.width;
+    if (p.x > bgCanvas.width) p.x = 0;
+    if (p.y < 0) p.y = bgCanvas.height;
+    if (p.y > bgCanvas.height) p.y = 0;
+
+    bgCtx.beginPath();
+    bgCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    bgCtx.fillStyle = `rgba(100, 116, 139, ${p.alpha})`;
+    bgCtx.fill();
+  }
+
+  requestAnimationFrame(drawBgParticles);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AGENT CANVAS — CONNECTION LINES & FLOW PARTICLES
+// ═══════════════════════════════════════════════════════════════
+
+const agentCanvas = document.getElementById('agent-canvas');
+const agentCtx = agentCanvas.getContext('2d');
+let flowParticles = [];
+
+function resizeAgentCanvas() {
+  const rect = agentCanvas.parentElement.getBoundingClientRect();
+  agentCanvas.width = rect.width;
+  agentCanvas.height = rect.height;
+}
+
+function positionAgents() {
+  const area = agentCanvas.parentElement;
+  const W = area.offsetWidth;
+  const H = area.offsetHeight;
+
+  // Orchestrator hub at center
+  hubPos = { x: W / 2, y: H / 2 - 20 };
+  const hub = document.getElementById('orchestrator-hub');
+  hub.style.left = (hubPos.x - 50) + 'px';
+  hub.style.top = (hubPos.y - 50) + 'px';
+
+  // Place 8 agents in an ellipse around the hub
+  const rx = Math.min(W * 0.38, 340);
+  const ry = Math.min(H * 0.38, 240);
+  const startAngle = -Math.PI / 2 - 0.1;
+
+  AGENTS.forEach((agent, i) => {
+    const angle = startAngle + (i / AGENTS.length) * Math.PI * 2;
+    const x = hubPos.x + rx * Math.cos(angle);
+    const y = hubPos.y + ry * Math.sin(angle);
+    agentPositions[agent.id] = { x, y, angle };
+
+    const card = document.getElementById('card-' + agent.id);
+    if (card) {
+      card.style.left = (x - 110) + 'px';
+      card.style.top = (y - 75) + 'px';
+    }
+  });
+}
+
+function drawConnections(timestamp) {
+  agentCtx.clearRect(0, 0, agentCanvas.width, agentCanvas.height);
+
+  // Draw connections from hub to each agent
+  AGENTS.forEach((agent, i) => {
+    const pos = agentPositions[agent.id];
+    if (!pos) return;
+
+    const stepEl = document.querySelector(`.pipeline-step[data-agent="${agent.id}"]`);
+    const isActive = stepEl && stepEl.classList.contains('active');
+    const isDone = stepEl && stepEl.classList.contains('done');
+
+    // Connection line
+    agentCtx.beginPath();
+    agentCtx.moveTo(hubPos.x, hubPos.y);
+    agentCtx.lineTo(pos.x, pos.y);
+
+    if (isActive) {
+      agentCtx.strokeStyle = agent.color + '60';
+      agentCtx.lineWidth = 2;
+      agentCtx.setLineDash([]);
+    } else if (isDone) {
+      agentCtx.strokeStyle = 'rgba(34, 197, 94, 0.3)';
+      agentCtx.lineWidth = 1.5;
+      agentCtx.setLineDash([]);
+    } else {
+      agentCtx.strokeStyle = 'rgba(56, 68, 100, 0.15)';
+      agentCtx.lineWidth = 1;
+      agentCtx.setLineDash([4, 6]);
+    }
+    agentCtx.stroke();
+    agentCtx.setLineDash([]);
+
+    // Animated flow particles for active agent
+    if (isActive) {
+      const t = (timestamp % 2000) / 2000;
+      for (let p = 0; p < 3; p++) {
+        const pt = (t + p * 0.33) % 1;
+        const px = hubPos.x + (pos.x - hubPos.x) * pt;
+        const py = hubPos.y + (pos.y - hubPos.y) * pt;
+        const size = 3 - pt * 1.5;
+        const alpha = 1 - pt * 0.7;
+
+        agentCtx.beginPath();
+        agentCtx.arc(px, py, size, 0, Math.PI * 2);
+        agentCtx.fillStyle = agent.color + Math.floor(alpha * 200).toString(16).padStart(2, '0');
+        agentCtx.fill();
+
+        // Glow
+        agentCtx.beginPath();
+        agentCtx.arc(px, py, size + 4, 0, Math.PI * 2);
+        agentCtx.fillStyle = agent.color + '15';
+        agentCtx.fill();
+      }
+    }
+  });
+
+  // Draw pipeline connection lines between sequential agents
+  for (let i = 0; i < AGENTS.length - 1; i++) {
+    const from = agentPositions[AGENTS[i].id];
+    const to = agentPositions[AGENTS[i + 1].id];
+    if (!from || !to) continue;
+
+    const fromStep = document.querySelector(`.pipeline-step[data-agent="${AGENTS[i].id}"]`);
+    const fromDone = fromStep && fromStep.classList.contains('done');
+
+    if (fromDone) {
+      agentCtx.beginPath();
+      agentCtx.moveTo(from.x, from.y);
+
+      // Curve through near-hub midpoint
+      const mx = (from.x + to.x) / 2 + (hubPos.x - (from.x + to.x) / 2) * 0.3;
+      const my = (from.y + to.y) / 2 + (hubPos.y - (from.y + to.y) / 2) * 0.3;
+      agentCtx.quadraticCurveTo(mx, my, to.x, to.y);
+
+      agentCtx.strokeStyle = 'rgba(34, 197, 94, 0.15)';
+      agentCtx.lineWidth = 1;
+      agentCtx.stroke();
+    }
+  }
+
+  animationFrame = requestAnimationFrame(drawConnections);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BUILD UI ELEMENTS
+// ═══════════════════════════════════════════════════════════════
+
+function buildPipelineSteps() {
+  const container = document.getElementById('pipeline-steps');
+  container.innerHTML = '';
+
+  AGENTS.forEach((agent, i) => {
+    const step = document.createElement('div');
+    step.className = 'pipeline-step idle';
+    step.dataset.agent = agent.id;
+    step.innerHTML = `
+      <div class="step-header">
+        <div class="step-icon">${agent.icon}</div>
+        <div class="step-info">
+          <div class="step-name">${agent.name}</div>
+          <div class="step-desc">${agent.desc}</div>
+          <div class="step-status"></div>
+        </div>
+      </div>
+    `;
+    container.appendChild(step);
+
+    if (i < AGENTS.length - 1) {
+      const conn = document.createElement('div');
+      conn.className = 'step-connector';
+      conn.dataset.from = agent.id;
+      container.appendChild(conn);
+    }
+  });
+}
+
+function buildAgentCards() {
+  const container = document.getElementById('agent-cards-container');
+  container.innerHTML = '';
+
+  AGENTS.forEach(agent => {
+    const card = document.createElement('div');
+    card.className = 'agent-card';
+    card.id = 'card-' + agent.id;
+    card.innerHTML = `
+      <div class="agent-card-header">
+        <div class="agent-dot"></div>
+        <span class="agent-card-name">${agent.name}</span>
+        <span class="agent-card-model">${agent.model}</span>
+      </div>
+      <div class="agent-card-terminal" id="term-${agent.id}"></div>
+      <div class="agent-card-footer">
+        <span class="agent-tools">0 tools</span>
+        <span class="agent-time">--</span>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function buildBottomBar() {
+  const bar = document.getElementById('bottom-bar');
+  bar.innerHTML = '';
+
+  AGENTS.forEach((agent, i) => {
+    const el = document.createElement('div');
+    el.className = 'bottom-agent';
+    el.id = 'ba-' + agent.id;
+    el.innerHTML = `<div class="ba-dot"></div>${agent.name}`;
+    bar.appendChild(el);
+
+    if (i < AGENTS.length - 1) {
+      const arrow = document.createElement('span');
+      arrow.className = 'ba-arrow';
+      arrow.innerHTML = '&#x25B8;';
+      bar.appendChild(arrow);
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOG HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+const logBody = document.getElementById('log-body');
+
+function addLog(text, cls = 'system') {
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + cls;
+  const ts = formatElapsed(Date.now() - startTime);
+  entry.innerHTML = `<span class="log-timestamp">${ts}</span>${text}`;
+  logBody.appendChild(entry);
+  logBody.scrollTop = logBody.scrollHeight;
+
+  // Keep log manageable
+  while (logBody.children.length > 200) {
+    logBody.removeChild(logBody.firstChild);
+  }
+}
+
+function formatElapsed(ms) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, '0')}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SIMULATION ENGINE
+// ═══════════════════════════════════════════════════════════════
+
+const TOOL_NAMES = ['Read', 'Write', 'Bash', 'Glob', 'Grep', 'Edit', 'WebFetch'];
+
+const THINKING_SNIPPETS = [
+  'Analyzing the paper structure for Gaussian Splatting components...',
+  'The key innovation is in the depth regularization loss...',
+  'Need to map this to GSTemplateModel extension points...',
+  'This uses gsplat rasterization with custom SH evaluation...',
+  'The opacity decay schedule follows an exponential curve...',
+  'Looking at how other implementations handle this pattern...',
+  'The normal estimation network should use 3 MLP layers...',
+  'Need to handle the edge case where num_gaussians = 0...',
+];
+
+function randomChoice(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+async function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+async function simulateAgent(agentIndex) {
+  const agent = AGENTS[agentIndex];
+  const stepEl = document.querySelector(`.pipeline-step[data-agent="${agent.id}"]`);
+  const card = document.getElementById('card-' + agent.id);
+  const term = document.getElementById('term-' + agent.id);
+  const bottomAgent = document.getElementById('ba-' + agent.id);
+  const statusEl = stepEl.querySelector('.step-status');
+  const toolsEl = card.querySelector('.agent-tools');
+  const timeEl = card.querySelector('.agent-time');
+
+  // Activate
+  stepEl.classList.remove('idle');
+  stepEl.classList.add('active');
+  card.classList.add('active');
+  bottomAgent.classList.add('active');
+  statusEl.textContent = 'WORKING';
+
+  addLog(`&#x25B6; <b>${agent.name}</b> agent starting &mdash; ${agent.desc}`, 'agent');
+
+  const agentStart = Date.now();
+  let agentTools = 0;
+
+  // Simulate terminal lines
+  for (let i = 0; i < agent.terminalLines.length; i++) {
+    const line = agent.terminalLines[i];
+
+    // Add terminal line
+    const lineEl = document.createElement('div');
+    lineEl.className = 'term-line';
+
+    switch (line.type) {
+      case 'cmd':
+        lineEl.innerHTML = `<span class="prompt">$ </span>${escapeHtml(line.text.replace('$ ', ''))}`;
+        break;
+      case 'code':
+        lineEl.innerHTML = `<span class="keyword">${escapeHtml(line.text)}</span>`;
+        break;
+      case 'comment':
+        lineEl.innerHTML = `<span class="comment">${escapeHtml(line.text)}</span>`;
+        break;
+      case 'result':
+        lineEl.innerHTML = `<span class="string">${escapeHtml(line.text)}</span>`;
+        break;
+      default:
+        lineEl.textContent = line.text;
+    }
+
+    term.appendChild(lineEl);
+    // Keep only last 6 lines visible
+    while (term.children.length > 6) {
+      term.removeChild(term.firstChild);
+    }
+
+    // Simulate tool calls
+    const toolName = randomChoice(TOOL_NAMES);
+    toolCalls++;
+    agentTools++;
+    toolsEl.textContent = agentTools + ' tools';
+    document.getElementById('stat-tools').textContent = toolCalls;
+
+    // Add to log
+    if (i % 2 === 0) {
+      addLog(`<span class="tool-name">${toolName}</span> <span class="tool-path">${line.text.substring(0, 50)}</span>`, 'tool');
+    } else if (line.type === 'comment' || line.type === 'output') {
+      addLog(escapeHtml(line.text), 'thinking');
+    }
+
+    // Update tokens
+    const newTokens = randomInt(800, 4000);
+    tokenCount += newTokens;
+    costUsd = tokenCount * 0.0000015;
+    document.getElementById('stat-tokens').textContent = formatTokenCount(tokenCount);
+    document.getElementById('stat-cost').textContent = '$' + costUsd.toFixed(2);
+
+    // Update elapsed on card
+    const elapsed = ((Date.now() - agentStart) / 1000).toFixed(0);
+    timeEl.textContent = elapsed + 's';
+
+    await sleep(randomInt(250, 600));
+  }
+
+  // Mark done
+  const agentElapsed = ((Date.now() - agentStart) / 1000).toFixed(1);
+  stepEl.classList.remove('active');
+  stepEl.classList.add('done');
+  card.classList.remove('active');
+  card.classList.add('done');
+  bottomAgent.classList.remove('active');
+  bottomAgent.classList.add('done');
+  statusEl.textContent = `DONE ${agentElapsed}s`;
+
+  // Mark connector as done
+  const conn = document.querySelector(`.step-connector[data-from="${agent.id}"]`);
+  if (conn) conn.classList.add('done');
+
+  addLog(`&#x2714; <b>${agent.name}</b> completed in ${agentElapsed}s (${agentTools} tool calls)`, 'stage');
+
+  currentStep = agentIndex + 1;
+  document.getElementById('stat-agents').textContent = `${currentStep} / 8`;
+
+  // Update progress bar
+  const progress = ((agentIndex + 1) / AGENTS.length) * 100;
+  document.getElementById('progress-bar').style.width = progress + '%';
+}
+
+function formatTokenCount(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+  return String(n);
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN DEMO LOOP
+// ═══════════════════════════════════════════════════════════════
+
+async function runDemo() {
+  startTime = Date.now();
+  currentStep = 0;
+  toolCalls = 0;
+  tokenCount = 0;
+  costUsd = 0;
+
+  // Start elapsed timer
+  elapsedTimer = setInterval(() => {
+    const ms = Date.now() - startTime;
+    document.getElementById('stat-elapsed').textContent = formatElapsed(ms);
+  }, 1000);
+
+  addLog('Splatify multi-agent pipeline initialized', 'system');
+  addLog('Paper: <b>3D Gaussian Splatting with Depth Regularization</b>', 'system');
+  addLog('Model: <b>Sonnet</b> (orchestrator) + <b>Opus</b> (coder, debugger)', 'system');
+
+  await sleep(800);
+
+  addLog('&#x25B6; Orchestrator agent launched', 'stage');
+
+  await sleep(500);
+
+  // Run each agent sequentially
+  for (let i = 0; i < AGENTS.length; i++) {
+    await simulateAgent(i);
+
+    // Add a small gap between agents
+    if (i < AGENTS.length - 1) {
+      addLog('Orchestrator dispatching next agent...', 'thinking');
+      await sleep(randomInt(400, 800));
+    }
+  }
+
+  // Done!
+  clearInterval(elapsedTimer);
+
+  const totalElapsed = formatElapsed(Date.now() - startTime);
+  addLog(`&#x2705; Pipeline complete! ${AGENTS.length} agents, ${toolCalls} tool calls, ${formatTokenCount(tokenCount)} tokens`, 'result');
+
+  // Update final stats
+  document.getElementById('final-tokens').textContent = formatTokenCount(tokenCount);
+  document.getElementById('final-cost').textContent = '$' + costUsd.toFixed(2);
+  document.getElementById('final-elapsed').textContent = totalElapsed;
+  document.getElementById('final-files').textContent = '8';
+
+  await sleep(1500);
+
+  // Show completion overlay
+  document.getElementById('completion-overlay').classList.add('visible');
+}
+
+function restartDemo() {
+  // Reset everything
+  document.getElementById('completion-overlay').classList.remove('visible');
+  document.getElementById('progress-bar').style.width = '0%';
+  document.getElementById('stat-agents').textContent = '0 / 8';
+  document.getElementById('stat-tools').textContent = '0';
+  document.getElementById('stat-tokens').textContent = '0';
+  document.getElementById('stat-cost').textContent = '$0.00';
+  document.getElementById('stat-elapsed').textContent = '00:00';
+
+  // Reset pipeline steps
+  document.querySelectorAll('.pipeline-step').forEach(s => {
+    s.className = 'pipeline-step idle';
+    s.querySelector('.step-status').textContent = '';
+  });
+  document.querySelectorAll('.step-connector').forEach(c => {
+    c.className = 'step-connector';
+  });
+
+  // Reset agent cards
+  document.querySelectorAll('.agent-card').forEach(c => {
+    c.className = 'agent-card';
+    c.querySelector('.agent-card-terminal').innerHTML = '';
+    c.querySelector('.agent-tools').textContent = '0 tools';
+    c.querySelector('.agent-time').textContent = '--';
+  });
+
+  // Reset bottom bar
+  document.querySelectorAll('.bottom-agent').forEach(b => {
+    b.className = 'bottom-agent';
+  });
+
+  // Clear log
+  logBody.innerHTML = '';
+
+  if (elapsedTimer) clearInterval(elapsedTimer);
+
+  // Restart
+  setTimeout(runDemo, 500);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+
+function init() {
+  resizeBgCanvas();
+  initBgParticles();
+  drawBgParticles();
+
+  buildPipelineSteps();
+  buildAgentCards();
+  buildBottomBar();
+
+  resizeAgentCanvas();
+  positionAgents();
+  drawConnections(0);
+
+  // Auto-start after a brief pause
+  setTimeout(runDemo, 1200);
+}
+
+window.addEventListener('resize', () => {
+  resizeBgCanvas();
+  initBgParticles();
+  resizeAgentCanvas();
+  positionAgents();
+});
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

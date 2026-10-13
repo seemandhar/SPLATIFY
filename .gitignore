@@ -1,7 +1,31 @@
-.DS_Store
-Thumbs.db
-*.swp
-*.swo
-node_modules/
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Environment
+.env
+.venv/
+venv/
+
+# Runtime outputs
+workspace/
+generated/
+outputs/
+results/
+data/
+*.ckpt
+
+# Claude
+.claude/
+
+# IDE / OS
 .vscode/
 .idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+node_modules/

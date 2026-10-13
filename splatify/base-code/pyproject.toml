@@ -1,0 +1,61 @@
+[project]
+name = "splatify-gs-template"
+version = "2.1.0"
+description = "Gaussian Splatting method template for nerfstudio (extends SplatfactoModel)"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+
+dependencies = [
+    "nerfstudio",
+    "gsplat>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "isort",
+    "pytest",
+]
+
+[project.entry-points."nerfstudio.method_configs"]
+gs-template      = "gs_template.configs:gs_template_method"
+absgs            = "gs_template.configs:absgs_method"
+depth-reg-gs     = "gs_template.configs:depth_reg_gs_method"
+feature-gs       = "gs_template.configs:feature_gs_method"
+micro-splatting  = "gs_template.configs:micro_splatting_method"
+compact-gs   = "gs_template.configs:compact_gs_method"
+msaa-gs      = "gs_template.configs:msaa_gs_method"
+opti3dgs     = "gs_template.configs:opti3dgs_method"
+decomp-gs    = "gs_template.configs:decomp_gs_method"
+nebula-gs    = "gs_template.configs:nebula_gs_method"
+bogauss      = "gs_template.configs:bogauss_method"
+light-gs     = "gs_template.configs:light_gs_method"
+stablegs     = "gs_template.configs:stablegs_method"
+vod3dgs-s    = "gs_template.configs:vod3dgs_s_method"
+vod3dgs-l    = "gs_template.configs:vod3dgs_l_method"
+rain-gs      = "gs_template.configs:rain_gs_method"
+bubble-gs    = "gs_template.configs:bubble_gs_method"
+trick-gs     = "gs_template.configs:trick_gs_method"
+clod-gs      = "gs_template.configs:clod_gs_method"
+twodgs       = "gs_template.configs:twodgs_method"
+pixel-gs     = "gs_template.configs:pixel_gs_method"
+gaussian-shader  = "gs_template.configs:gaussian_shader_method"
+scaffold-gs  = "gs_template.configs:scaffold_gs_method"
+dwtgs        = "gs_template.configs:dwtgs_method"
+lp3dgs       = "gs_template.configs:lp3dgs_method"
+compgs       = "gs_template.configs:compgs_method"
+compgs-enhanced = "gs_template.configs:compgs_enhanced_method"
+cor-gs       = "gs_template.configs:cor_gs_method"
+fsgs         = "gs_template.configs:fsgs_method"
+msaa-gs-plus = "gs_template.configs:msaa_gs_plus_method"
+diamond-gs-3d  = "gs_template.configs:diamond_gs_3d_method"
+fast-gs        = "gs_template.configs:fast_gs_method"
+fast-gs-big    = "gs_template.configs:fast_gs_big_method"
+
+[tool.setuptools.packages]
+find = { include = ["gs_template", "gs_template.*"] }
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

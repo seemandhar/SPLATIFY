@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Splatify Discover — Iterative Evolution</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --cyan: #79c0ff;
+    --orange: #f0883e;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--green), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  header .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  header .nav-links { margin-left: auto; display: flex; gap: 16px; }
+  header a {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 13px;
+  }
+  header a:hover { text-decoration: underline; }
+
+  .container {
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 320px 1fr 380px;
+    gap: 20px;
+  }
+  @media (max-width: 1400px) {
+    .container { grid-template-columns: 300px 1fr; }
+    #log-panel-col { display: none; }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-body { padding: 18px; }
+
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  input[type="text"], input[type="number"] {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 14px;
+    margin-bottom: 14px;
+    outline: none;
+  }
+  input:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--text-dim); opacity: 0.6; }
+  select {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 14px;
+    margin-bottom: 14px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 8px;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--green), var(--cyan));
+    color: white;
+  }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-stop {
+    background: linear-gradient(135deg, var(--red), var(--orange));
+    color: white;
+    display: none;
+  }
+  .btn-stop:hover { opacity: 0.9; }
+  .btn-stop:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── PSNR Progress Card ── */
+  .psnr-progress {
+    text-align: center;
+    padding: 16px;
+    display: none;
+  }
+  .psnr-progress .baseline-val {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .psnr-progress .best-val {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--green);
+  }
+  .psnr-progress .improvement {
+    font-size: 14px;
+    color: var(--cyan);
+    margin-top: 4px;
+  }
+  .psnr-progress .gen-count {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 8px;
+  }
+
+  /* ── Generation Timeline ── */
+  .generations {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+    padding-bottom: 20px;
+  }
+  .generations::-webkit-scrollbar { width: 6px; }
+  .generations::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .gen-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .gen-section.active {
+    border-color: var(--cyan);
+    box-shadow: 0 0 12px rgba(88, 166, 255, 0.1);
+  }
+  .gen-section.completed {
+    border-color: var(--green);
+  }
+
+  .gen-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .gen-header .gen-num {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--cyan);
+  }
+  .gen-header .gen-best {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .gen-header .gen-best.positive { color: var(--green); }
+  .gen-header .gen-best.negative { color: var(--red); }
+  .gen-header .gen-status {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-weight: 400;
+  }
+
+  .gen-candidates {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 12px;
+  }
+  @media (max-width: 1600px) {
+    .gen-candidates { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* ── Candidate Cards ── */
+  .cand-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+    min-height: 80px;
+  }
+  .cand-card.improving {
+    border-color: var(--yellow);
+    box-shadow: 0 0 8px rgba(210, 153, 34, 0.15);
+  }
+  .cand-card.training {
+    border-color: var(--cyan);
+    box-shadow: 0 0 8px rgba(88, 166, 255, 0.15);
+  }
+  .cand-card.training::after {
+    content: "";
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 2px;
+    background: var(--cyan);
+    animation: trainProg 10s linear infinite;
+  }
+  @keyframes trainProg {
+    0% { width: 0%; }
+    100% { width: 100%; }
+  }
+  .cand-card.improved {
+    border-color: var(--green);
+    opacity: 0.9;
+  }
+  .cand-card.best {
+    border-color: var(--green);
+    box-shadow: 0 0 12px rgba(63, 185, 80, 0.25);
+    background: rgba(63, 185, 80, 0.06);
+  }
+  .cand-card.error {
+    border-color: var(--red);
+    opacity: 0.5;
+  }
+  .cand-card.debugging {
+    border-color: var(--orange);
+    box-shadow: 0 0 8px rgba(240, 136, 62, 0.2);
+  }
+  .cand-card.installing {
+    border-color: var(--purple);
+  }
+
+  .cand-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .cand-id {
+    font-size: 10px;
+    font-weight: 700;
+    width: 22px; height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .cand-card.improving .cand-id,
+  .cand-card.training .cand-id {
+    animation: candPulse 2s infinite;
+  }
+  @keyframes candPulse {
+    0%, 100% { box-shadow: none; }
+    50% { box-shadow: 0 0 8px rgba(121, 192, 255, 0.4); }
+  }
+  .cand-card.best .cand-id {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+  }
+  .cand-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cand-psnr {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--cyan);
+    margin-top: 2px;
+  }
+  .cand-psnr.good { color: var(--green); }
+  .cand-status {
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .cand-summary {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    line-height: 1.3;
+    max-height: 40px;
+    overflow: hidden;
+  }
+
+  /* ── Mini terminal on cards ── */
+  .cand-terminal {
+    max-height: 0;
+    overflow: hidden;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    line-height: 1.4;
+    color: var(--text-dim);
+    background: rgba(0,0,0,0.15);
+    transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1);
+    margin-top: 4px;
+    border-radius: 4px;
+  }
+  .cand-card.improving .cand-terminal,
+  .cand-card.training .cand-terminal,
+  .cand-card.debugging .cand-terminal {
+    max-height: 44px;
+    border: 1px solid var(--border);
+    padding: 2px 0;
+  }
+  .cand-term-line {
+    padding: 0 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cand-term-line .ct-tool { color: var(--yellow); font-weight: 600; }
+
+  /* ── Results Banner ── */
+  .results-banner {
+    display: none;
+    background: linear-gradient(135deg, rgba(63,185,80,0.12), rgba(88,166,255,0.08));
+    border: 1px solid var(--green);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .results-banner.visible { display: block; }
+  .results-banner h2 {
+    font-size: 18px;
+    color: var(--green);
+    margin-bottom: 12px;
+  }
+  .results-banner .psnr-big {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--green);
+    text-align: center;
+  }
+  .results-banner .psnr-improvement {
+    font-size: 16px;
+    color: var(--cyan);
+    text-align: center;
+    margin-top: 4px;
+  }
+  .results-banner .evolution-path {
+    margin-top: 16px;
+    padding: 12px;
+    background: var(--bg);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .evo-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(48,54,61,0.5);
+  }
+  .evo-step:last-child { border-bottom: none; }
+  .evo-step .evo-gen {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    min-width: 60px;
+  }
+  .evo-step .evo-psnr {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: var(--cyan);
+    min-width: 70px;
+  }
+  .evo-step .evo-strategy { color: var(--text); }
+  .evo-step .evo-delta {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+  .evo-step .evo-delta.positive { color: var(--green); }
+  .evo-step .evo-delta.negative { color: var(--red); }
+  .results-banner .best-path {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: monospace;
+    margin-top: 12px;
+    word-break: break-all;
+  }
+  .results-banner .best-summary {
+    font-size: 13px;
+    color: var(--text);
+    margin-top: 12px;
+    white-space: pre-wrap;
+    line-height: 1.5;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  /* ── Log Panel ── */
+  #log-panel {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 100px);
+  }
+  #log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    min-height: 400px;
+    background: var(--bg);
+  }
+  #log::-webkit-scrollbar { width: 6px; }
+  #log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .log-entry { padding: 2px 0; word-break: break-word; }
+  .log-stage {
+    color: var(--green);
+    font-weight: 600;
+    margin-top: 8px;
+    padding: 4px 10px;
+    background: rgba(63,185,80,0.08);
+    border-left: 3px solid var(--green);
+  }
+  .log-gen {
+    color: var(--purple);
+    font-weight: 600;
+    margin-top: 12px;
+    padding: 6px 10px;
+    background: rgba(188,140,255,0.08);
+    border-left: 3px solid var(--purple);
+  }
+  .log-island { color: var(--cyan); padding-left: 12px; }
+  .log-tool { color: var(--yellow); padding-left: 20px; font-size: 11px; }
+  .log-error {
+    color: var(--red);
+    font-weight: 600;
+    padding: 4px 10px;
+    background: rgba(248,81,73,0.08);
+    border-left: 3px solid var(--red);
+  }
+  .log-psnr { color: var(--cyan); padding-left: 12px; font-weight: 600; }
+  .log-best {
+    color: var(--green);
+    font-weight: 700;
+    padding: 6px 12px;
+    background: rgba(63,185,80,0.1);
+    border-radius: 6px;
+    margin-top: 6px;
+  }
+  .log-done {
+    color: var(--green);
+    font-weight: 600;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: rgba(63,185,80,0.1);
+    border-radius: 6px;
+  }
+  .log-system { color: var(--text-dim); font-size: 11px; }
+
+  .status-bar {
+    padding: 10px 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+  .status-dot.running {
+    background: var(--green);
+    animation: pulse 1.5s infinite;
+  }
+  .status-dot.error { background: var(--red); }
+  .status-dot.done { background: var(--accent); }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── Strategy legend ── */
+  .strat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+    font-size: 11px;
+  }
+  .strat-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Splatify Discover</h1>
+  <span class="badge">Iterative Evolution</span>
+  <span class="badge">Run overnight, wake up to better PSNR</span>
+  <div class="nav-links">
+    <a href="/">&larr; Pipeline</a>
+    <a href="/invent">Invent</a>
+  </div>
+</header>
+
+<div class="container">
+  <!-- ── Left: Config ── -->
+  <div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.78 4.22a.75.75 0 010 1.06l-5 5a.75.75 0 01-1.06 0l-2.5-2.5a.75.75 0 011.06-1.06L6.25 8.69l4.47-4.47a.75.75 0 011.06 0z"/></svg>
+        Discover Configuration
+      </div>
+      <div class="card-body">
+        <label for="impl_path">Implementation path *</label>
+        <input type="text" id="impl_path" placeholder="/path/to/generated/20260308_230115_e91a79" />
+
+        <label for="data_path">Training data path</label>
+        <input type="text" id="data_path" placeholder="defaults to garden scene" />
+
+        <label for="scene">Scene name</label>
+        <input type="text" id="scene" value="garden" placeholder="garden" />
+
+        <label for="max_iters">Training iterations per candidate</label>
+        <input type="number" id="max_iters" value="10000" min="1000" step="1000" />
+
+        <label for="gpu">GPU ID(s) (comma-separated)</label>
+        <input type="text" id="gpu" value="0" placeholder="0 or 0,1,2,3" />
+
+        <label for="num_views">Number of Views</label>
+        <select id="num_views">
+          <option value="-1" selected>Full (all views)</option>
+          <option value="3">3 views</option>
+          <option value="6">6 views</option>
+          <option value="9">9 views</option>
+          <option value="12">12 views</option>
+          <option value="24">24 views</option>
+        </select>
+
+        <label for="model">Claude Model</label>
+        <select id="model">
+          <option value="sonnet" selected>Sonnet &mdash; fast & cost-effective</option>
+          <option value="opus">Opus &mdash; best quality</option>
+          <option value="haiku">Haiku &mdash; cheapest</option>
+        </select>
+
+        <button class="btn btn-primary" id="btn-start" onclick="startDiscover()">
+          Launch Discovery
+        </button>
+        <button class="btn btn-stop" id="btn-stop" onclick="stopDiscover()">
+          STOP &mdash; Finish Current Gen &amp; Show Results
+        </button>
+      </div>
+    </div>
+
+    <!-- PSNR Progress -->
+    <div class="card" id="psnr-card" style="margin-bottom:16px;">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 1.75V13.5h13.75a.75.75 0 010 1.5H.75a.75.75 0 01-.75-.75V1.75a.75.75 0 011.5 0zm14.28 2.53a.75.75 0 00-1.06-1.06L10 7.94 7.53 5.47a.75.75 0 00-1.06 0L3.22 8.72a.75.75 0 001.06 1.06L7 7.06l2.47 2.47a.75.75 0 001.06 0l5.25-5.25z"/></svg>
+        PSNR Progress
+      </div>
+      <div class="psnr-progress" id="psnr-progress">
+        <div class="baseline-val">Baseline: <span id="baseline-val">--</span> dB</div>
+        <div class="best-val" id="best-val">--</div>
+        <div class="improvement" id="improvement-val"></div>
+        <div class="gen-count" id="gen-count"></div>
+      </div>
+    </div>
+
+    <!-- Strategy Legend -->
+    <div class="card">
+      <div class="card-header">Strategies</div>
+      <div class="card-body" style="padding:10px;">
+        <div id="strategy-legend"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Center: Generations Timeline ── -->
+  <div>
+    <div id="results-banner" class="results-banner"></div>
+    <div class="generations" id="generations">
+      <div style="text-align:center;padding:60px;color:var(--text-dim);font-size:14px;">
+        Configure and launch to start iterative discovery.
+        <br><span style="font-size:12px;">Each generation creates 8 variants, trains them, and the best becomes the next base.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Right: Log Panel ── -->
+  <div id="log-panel-col">
+    <div class="card" id="log-panel">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.72 3.22a.75.75 0 011.06 0l3.5 3.5a.75.75 0 010 1.06l-3.5 3.5a.75.75 0 01-1.06-1.06L7.69 7.5 4.72 4.28a.75.75 0 010-1.06zm5.5 7.28a.75.75 0 010-1.5h3a.75.75 0 010 1.5h-3z"/></svg>
+        Live Log
+      </div>
+      <div id="log">
+        <div class="log-entry log-system">Ready. Configure and launch discovery.</div>
+      </div>
+      <div class="status-bar">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Idle</span>
+        <span id="token-text" style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan);display:none;"></span>
+        <span style="margin-left:12px" id="elapsed-text"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STRATEGIES = [
+  {id: "loss_engineering", name: "Loss Engineering", emoji: "L", color: "#f0883e"},
+  {id: "densification", name: "Densification", emoji: "D", color: "#58a6ff"},
+  {id: "lr_schedule", name: "LR & Optimization", emoji: "O", color: "#d29922"},
+  {id: "rendering", name: "Rendering", emoji: "R", color: "#79c0ff"},
+  {id: "new_params", name: "New Parameters", emoji: "P", color: "#bc8cff"},
+  {id: "regularization", name: "Regularization", emoji: "G", color: "#3fb950"},
+  {id: "training_schedule", name: "Training Schedule", emoji: "T", color: "#f85149"},
+  {id: "web_inspired", name: "Web-Inspired", emoji: "W", color: "#e6edf3"},
+];
+
+// Render strategy legend
+const legendEl = document.getElementById('strategy-legend');
+legendEl.innerHTML = [
+  {emoji: 'B', name: 'Baseline (unmodified)', color: '#8b949e'},
+  ...STRATEGIES
+].map(s => `
+  <div class="strat-item">
+    <span class="strat-dot" style="background:${s.color}"></span>
+    <span style="font-weight:700;color:${s.color};width:14px;text-align:center;">${s.emoji}</span>
+    <span>${s.name}</span>
+  </div>
+`).join('');
+
+let currentJobId = null;
+let eventSource = null;
+let startTime = null;
+let elapsedTimer = null;
+
+// State
+let baselinePsnr = 0;
+let currentBestPsnr = 0;
+let currentGeneration = 0;
+let generations = {};      // gen_index -> { candidates: {id -> data}, best_id, best_psnr }
+let totalInputTokens = 0;
+let totalOutputTokens = 0;
+
+const logEl = document.getElementById('log');
+const btnStart = document.getElementById('btn-start');
+const btnStop = document.getElementById('btn-stop');
+const dot = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+const elapsedText = document.getElementById('elapsed-text');
+const tokenText = document.getElementById('token-text');
+const generationsEl = document.getElementById('generations');
+const psnrProgress = document.getElementById('psnr-progress');
+
+function formatTokens(n) {
+  if (n >= 1_000_000) return (n/1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000) return (n/1_000).toFixed(1) + 'K';
+  return String(n);
+}
+
+function stratColor(strategyId) {
+  if (strategyId === 'baseline') return '#8b949e';
+  const s = STRATEGIES.find(s => s.id === strategyId);
+  return s ? s.color : '#8b949e';
+}
+
+function stratEmoji(strategyId) {
+  if (strategyId === 'baseline') return 'B';
+  const s = STRATEGIES.find(s => s.id === strategyId);
+  return s ? s.emoji : '?';
+}
+
+function addLog(cls, text) {
+  const d = document.createElement('div');
+  d.className = 'log-entry ' + cls;
+  d.textContent = text;
+  logEl.appendChild(d);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function updatePsnrProgress() {
+  psnrProgress.style.display = '';
+  document.getElementById('baseline-val').textContent = baselinePsnr > 0 ? baselinePsnr.toFixed(2) : '--';
+  document.getElementById('best-val').textContent = currentBestPsnr > 0 ? currentBestPsnr.toFixed(2) + ' dB' : '--';
+  const imp = currentBestPsnr - baselinePsnr;
+  const impEl = document.getElementById('improvement-val');
+  if (baselinePsnr > 0 && currentBestPsnr > 0) {
+    impEl.textContent = (imp >= 0 ? '+' : '') + imp.toFixed(2) + ' dB from baseline';
+    impEl.style.color = imp >= 0 ? 'var(--green)' : 'var(--red)';
+  } else {
+    impEl.textContent = '';
+  }
+  document.getElementById('gen-count').textContent = `${Object.keys(generations).length} generation(s) completed`;
+}
+
+function updateTokenDisplay() {
+  if (totalInputTokens > 0 || totalOutputTokens > 0) {
+    tokenText.style.display = '';
+    tokenText.textContent = `${formatTokens(totalInputTokens + totalOutputTokens)} tokens`;
+  }
+}
+
+// ── Generation UI ──
+
+function ensureGenSection(genIdx) {
+  if (document.getElementById(`gen-${genIdx}`)) return;
+
+  // Remove placeholder text
+  const placeholder = generationsEl.querySelector('div[style*="text-align:center"]');
+  if (placeholder) placeholder.remove();
+
+  const section = document.createElement('div');
+  section.className = 'gen-section active';
+  section.id = `gen-${genIdx}`;
+  section.innerHTML = `
+    <div class="gen-header">
+      <span class="gen-num">Gen ${genIdx}</span>
+      <span class="gen-status" id="gen-${genIdx}-status">Starting...</span>
+      <span class="gen-best" id="gen-${genIdx}-best"></span>
+    </div>
+    <div class="gen-candidates" id="gen-${genIdx}-candidates"></div>
+  `;
+  generationsEl.appendChild(section);
+  generationsEl.scrollTop = generationsEl.scrollHeight;
+
+  // Mark previous gen as not active
+  if (genIdx > 1) {
+    const prev = document.getElementById(`gen-${genIdx - 1}`);
+    if (prev) {
+      prev.classList.remove('active');
+      prev.classList.add('completed');
+    }
+  }
+
+  if (!generations[genIdx]) {
+    generations[genIdx] = { candidates: {}, best_id: null, best_psnr: 0 };
+  }
+}
+
+function ensureCandCard(genIdx, candId, strategy, strategyId) {
+  ensureGenSection(genIdx);
+  const container = document.getElementById(`gen-${genIdx}-candidates`);
+  let card = document.getElementById(`cand-${genIdx}-${candId}`);
+  if (card) return card;
+
+  const color = stratColor(strategyId || '');
+  const emoji = stratEmoji(strategyId || '');
+
+  card = document.createElement('div');
+  card.className = 'cand-card';
+  card.id = `cand-${genIdx}-${candId}`;
+  card.innerHTML = `
+    <div class="cand-header">
+      <span class="cand-id" style="border-color:${color}">${emoji}</span>
+      <span class="cand-name">${strategy || 'Candidate ' + candId}</span>
+    </div>
+    <div class="cand-psnr" id="cand-${genIdx}-${candId}-psnr"></div>
+    <div class="cand-status" id="cand-${genIdx}-${candId}-status">pending</div>
+    <div class="cand-summary" id="cand-${genIdx}-${candId}-summary"></div>
+    <div class="cand-terminal" id="cand-${genIdx}-${candId}-term"></div>
+  `;
+  container.appendChild(card);
+
+  if (!generations[genIdx]) generations[genIdx] = { candidates: {}, best_id: null, best_psnr: 0 };
+  generations[genIdx].candidates[candId] = { strategy, strategyId, psnr: 0, status: 'pending' };
+
+  return card;
+}
+
+function setCandStatus(genIdx, candId, status) {
+  const card = document.getElementById(`cand-${genIdx}-${candId}`);
+  if (!card) return;
+  card.className = 'cand-card ' + status;
+  const statusEl = document.getElementById(`cand-${genIdx}-${candId}-status`);
+  if (statusEl) statusEl.textContent = status;
+  if (generations[genIdx] && generations[genIdx].candidates[candId]) {
+    generations[genIdx].candidates[candId].status = status;
+  }
+}
+
+function setCandPsnr(genIdx, candId, psnr) {
+  const el = document.getElementById(`cand-${genIdx}-${candId}-psnr`);
+  if (el && psnr > 0) {
+    el.textContent = psnr.toFixed(2) + ' dB';
+  }
+  if (generations[genIdx] && generations[genIdx].candidates[candId]) {
+    generations[genIdx].candidates[candId].psnr = psnr;
+  }
+}
+
+function addCandTermLine(genIdx, candId, text) {
+  const term = document.getElementById(`cand-${genIdx}-${candId}-term`);
+  if (!term) return;
+  const line = document.createElement('div');
+  line.className = 'cand-term-line';
+  line.textContent = text.substring(0, 120);
+  term.appendChild(line);
+  // Keep only last 4 lines
+  while (term.children.length > 4) term.removeChild(term.firstChild);
+}
+
+// ── Event Handling ──
+
+function handleEvent(ev) {
+  const t = ev.type;
+  const gen = ev.generation || currentGeneration;
+
+  switch (t) {
+    case 'stage':
+      addLog('log-stage', ev.message || ev.stage);
+      statusText.textContent = ev.message || ev.stage;
+      break;
+
+    case 'gen_start':
+      currentGeneration = ev.generation;
+      ensureGenSection(ev.generation);
+      const statusEl = document.getElementById(`gen-${ev.generation}-status`);
+      if (statusEl) statusEl.textContent = ev.message || 'Running...';
+      addLog('log-gen', ev.message || `Generation ${ev.generation}`);
+      statusText.textContent = `Gen ${ev.generation} running...`;
+      break;
+
+    case 'island_created':
+      ensureCandCard(gen, ev.island_id, ev.strategy, ev.strategy_id);
+      break;
+
+    case 'island_status': {
+      const status = ev.status;
+      const g = ev.generation || gen;
+      setCandStatus(g, ev.island_id, status);
+      if (ev.summary) {
+        const sumEl = document.getElementById(`cand-${g}-${ev.island_id}-summary`);
+        if (sumEl) sumEl.textContent = ev.summary.substring(0, 150);
+      }
+      if (status === 'improving' || status === 'training' || status === 'installing' || status === 'debugging') {
+        addLog('log-island', ev.message || `Candidate ${ev.island_id}: ${status}`);
+      }
+      break;
+    }
+
+    case 'island_log': {
+      const g = ev.generation || gen;
+      addCandTermLine(g, ev.island_id, ev.message || '');
+      break;
+    }
+
+    case 'island_tool': {
+      const g = ev.generation || gen;
+      const toolMsg = `${ev.tool}: ${(ev.summary || '').substring(0, 80)}`;
+      addCandTermLine(g, ev.island_id, toolMsg);
+      break;
+    }
+
+    case 'island_psnr': {
+      const g = ev.generation || (ev.round || gen);
+      // _train_island_async sends round = round_idx + 1 = gen_index
+      const actualGen = ev.round || g;
+      setCandPsnr(actualGen, ev.island_id, ev.psnr || 0);
+      setCandStatus(actualGen, ev.island_id, 'trained');
+      addLog('log-psnr', ev.message || `Candidate ${ev.island_id}: ${(ev.psnr||0).toFixed(2)} dB`);
+      break;
+    }
+
+    case 'island_error': {
+      const g = ev.generation || gen;
+      setCandStatus(g, ev.island_id, 'error');
+      addLog('log-error', ev.message || `Candidate ${ev.island_id} error`);
+      break;
+    }
+
+    case 'island_tokens': {
+      // Per-candidate tokens — just update display
+      break;
+    }
+
+    case 'tokens_update':
+      totalInputTokens = ev.input_tokens || 0;
+      totalOutputTokens = ev.output_tokens || 0;
+      updateTokenDisplay();
+      break;
+
+    case 'train_batch':
+      addLog('log-island', ev.message || 'Training batch...');
+      break;
+
+    case 'gen_result': {
+      const g = ev.generation;
+      if (generations[g]) {
+        generations[g].best_id = ev.best_id;
+        generations[g].best_psnr = ev.best_psnr || 0;
+      }
+      // Update gen header
+      const bestEl = document.getElementById(`gen-${g}-best`);
+      const genStatusEl = document.getElementById(`gen-${g}-status`);
+      if (ev.best_psnr > 0) {
+        if (bestEl) {
+          bestEl.textContent = `Best: ${ev.best_psnr.toFixed(2)} dB`;
+          bestEl.classList.add('positive');
+        }
+        if (genStatusEl) genStatusEl.textContent = ev.best_strategy || 'Complete';
+      } else {
+        if (bestEl) bestEl.textContent = 'Failed';
+        if (genStatusEl) genStatusEl.textContent = 'All failed';
+      }
+      // Mark best candidate
+      if (ev.best_id !== null && ev.best_id !== undefined) {
+        setCandStatus(g, ev.best_id, 'best');
+      }
+      // Mark section as completed
+      const section = document.getElementById(`gen-${g}`);
+      if (section) {
+        section.classList.remove('active');
+        section.classList.add('completed');
+      }
+      // Update candidate summaries from gen_result data
+      if (ev.candidates) {
+        for (const c of ev.candidates) {
+          if (c.summary) {
+            const sumEl = document.getElementById(`cand-${g}-${c.id}-summary`);
+            if (sumEl) sumEl.textContent = c.summary.substring(0, 150);
+          }
+          if (c.psnr > 0) setCandPsnr(g, c.id, c.psnr);
+        }
+      }
+      addLog('log-best', ev.message || `Gen ${g} complete`);
+      break;
+    }
+
+    case 'new_best':
+      if (ev.psnr > 0) currentBestPsnr = ev.psnr;
+      if (ev.baseline_psnr > 0) baselinePsnr = ev.baseline_psnr;
+      updatePsnrProgress();
+      break;
+
+    case 'discover_done':
+      showFinalResults(ev.result);
+      break;
+
+    case 'done':
+      dot.className = 'status-dot done';
+      statusText.textContent = ev.message || 'Discovery complete';
+      addLog('log-done', ev.message || 'Done');
+      btnStart.disabled = false;
+      btnStop.style.display = 'none';
+      btnStart.style.display = '';
+      if (elapsedTimer) clearInterval(elapsedTimer);
+      if (ev.result) showFinalResults(ev.result);
+      break;
+
+    case 'error':
+      addLog('log-error', ev.message || 'Error');
+      dot.className = 'status-dot error';
+      statusText.textContent = 'Error';
+      break;
+
+    case 'heartbeat':
+      break;
+
+    default:
+      if (ev.message) addLog('log-system', `[${t}] ${ev.message}`);
+  }
+}
+
+function showFinalResults(result) {
+  if (!result) return;
+  const banner = document.getElementById('results-banner');
+  const bl = result.baseline_psnr || 0;
+  const best = result.final_best_psnr || 0;
+  const imp = result.improvement || 0;
+  const nGen = result.num_generations || 0;
+
+  let evoHtml = '';
+  if (result.evolution_path) {
+    let prevPsnr = 0;
+    for (const step of result.evolution_path) {
+      const delta = prevPsnr > 0 ? step.psnr - prevPsnr : 0;
+      const deltaStr = prevPsnr > 0 ? ((delta >= 0 ? '+' : '') + delta.toFixed(2)) : '';
+      const deltaCls = delta >= 0 ? 'positive' : 'negative';
+      evoHtml += `
+        <div class="evo-step">
+          <span class="evo-gen">${step.label}</span>
+          <span class="evo-psnr">${step.psnr.toFixed(2)} dB</span>
+          <span class="evo-strategy">${step.summary || ''}</span>
+          ${deltaStr ? `<span class="evo-delta ${deltaCls}">${deltaStr}</span>` : ''}
+        </div>
+      `;
+      prevPsnr = step.psnr;
+    }
+  }
+
+  // Build generation details
+  let genDetails = '';
+  if (result.generations) {
+    for (const gen of result.generations) {
+      genDetails += `<div style="margin-top:12px;font-size:12px;">`;
+      genDetails += `<strong>Gen ${gen.index}</strong> (base: ${gen.input_psnr > 0 ? gen.input_psnr.toFixed(2) : 'N/A'} dB)`;
+      if (gen.candidates) {
+        genDetails += '<div style="margin-left:12px;margin-top:4px;">';
+        const sorted = [...gen.candidates].sort((a, b) => (b.psnr || 0) - (a.psnr || 0));
+        for (const c of sorted) {
+          const isBest = c.id === gen.best_id;
+          const psnrStr = c.psnr > 0 ? c.psnr.toFixed(2) + ' dB' : c.status || 'FAILED';
+          const style = isBest ? 'color:var(--green);font-weight:700;' : (c.psnr > 0 ? '' : 'opacity:0.5;');
+          genDetails += `<div style="${style}">${isBest ? '&#9733; ' : ''}${c.strategy || 'C' + c.id}: ${psnrStr}</div>`;
+        }
+        genDetails += '</div>';
+      }
+      genDetails += '</div>';
+    }
+  }
+
+  banner.innerHTML = `
+    <h2>Discovery Complete &mdash; ${nGen} Generation${nGen !== 1 ? 's' : ''}</h2>
+    <div class="psnr-big">${best > 0 ? best.toFixed(2) + ' dB' : 'N/A'}</div>
+    <div class="psnr-improvement">${bl > 0 && best > 0 ? (imp >= 0 ? '+' : '') + imp.toFixed(2) + ' dB improvement over baseline (' + bl.toFixed(2) + ' dB)' : ''}</div>
+    ${evoHtml ? `
+      <div class="evolution-path">
+        <div style="font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Evolution Path</div>
+        ${evoHtml}
+      </div>
+    ` : ''}
+    ${result.best_implementation_path ? `<div class="best-path">Best implementation: ${result.best_implementation_path}</div>` : ''}
+    ${genDetails ? `<div class="evolution-path" style="margin-top:12px;max-height:300px;overflow-y:auto;">
+      <div style="font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">All Generations Detail</div>
+      ${genDetails}
+    </div>` : ''}
+  `;
+  banner.classList.add('visible');
+  generationsEl.scrollTop = 0;
+}
+
+// ── Controls ──
+
+async function startDiscover() {
+  const implPath = document.getElementById('impl_path').value.trim();
+  if (!implPath) { alert('Implementation path is required'); return; }
+
+  btnStart.disabled = true;
+  btnStart.style.display = 'none';
+  btnStop.style.display = 'block';
+  btnStop.disabled = false;
+  dot.className = 'status-dot running';
+  statusText.textContent = 'Starting...';
+  logEl.innerHTML = '';
+  generationsEl.innerHTML = '';
+  document.getElementById('results-banner').classList.remove('visible');
+
+  // Reset state
+  baselinePsnr = 0;
+  currentBestPsnr = 0;
+  currentGeneration = 0;
+  generations = {};
+  totalInputTokens = 0;
+  totalOutputTokens = 0;
+  psnrProgress.style.display = 'none';
+
+  startTime = Date.now();
+  elapsedTimer = setInterval(() => {
+    const secs = Math.floor((Date.now() - startTime) / 1000);
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    elapsedText.textContent = h > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+  }, 1000);
+
+  try {
+    const resp = await fetch('/api/discover/run', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        impl_path: implPath,
+        data_path: document.getElementById('data_path').value.trim(),
+        scene: document.getElementById('scene').value.trim() || 'garden',
+        max_iters: parseInt(document.getElementById('max_iters').value) || 10000,
+        gpu: document.getElementById('gpu').value.trim() || '0',
+        num_views: parseInt(document.getElementById('num_views').value),
+        model: document.getElementById('model').value,
+      }),
+    });
+    const data = await resp.json();
+    if (data.error) {
+      addLog('log-error', data.error);
+      btnStart.disabled = false;
+      btnStart.style.display = '';
+      btnStop.style.display = 'none';
+      dot.className = 'status-dot error';
+      return;
+    }
+    currentJobId = data.job_id;
+    addLog('log-system', `Job ${data.job_id} started (run: ${data.run_id})`);
+
+    // Connect SSE
+    eventSource = new EventSource(`/api/discover/events/${data.job_id}`);
+    eventSource.onmessage = (e) => {
+      try {
+        const ev = JSON.parse(e.data);
+        handleEvent(ev);
+      } catch (err) { console.error('SSE parse error', err); }
+    };
+    eventSource.onerror = () => {
+      eventSource.close();
+      eventSource = null;
+      if (dot.className.includes('running')) {
+        dot.className = 'status-dot error';
+        statusText.textContent = 'Connection lost';
+        btnStart.disabled = false;
+        btnStart.style.display = '';
+        btnStop.style.display = 'none';
+      }
+    };
+
+  } catch (err) {
+    addLog('log-error', `Failed to start: ${err.message}`);
+    btnStart.disabled = false;
+    btnStart.style.display = '';
+    btnStop.style.display = 'none';
+    dot.className = 'status-dot error';
+  }
+}
+
+async function stopDiscover() {
+  if (!currentJobId) return;
+  btnStop.disabled = true;
+  btnStop.textContent = 'Stopping... (finishing current generation)';
+  addLog('log-stage', 'Stop requested — current generation will finish first...');
+
+  try {
+    await fetch(`/api/discover/stop/${currentJobId}`, { method: 'POST' });
+  } catch (err) {
+    addLog('log-error', `Stop request failed: ${err.message}`);
+    btnStop.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
